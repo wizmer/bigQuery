@@ -12,6 +12,10 @@ masks.append("chargeOne")
 masks.append("downGoing")
 masks.append("betaNotCrazy")
 
+
+theTable="full_test.full_test"
+b.setTable(theTable)
+
 theMask=b.makeSelectionMask(masks)
 print "{0:b}".format(theMask)
 
@@ -25,7 +29,7 @@ isEcal="(JMembPatt>>11)&1 as isEcal"
 
 variables='{},{},{},COUNT(1)'.format(isPhysicsTrigger,isTof,isEcal)
 
-theCommand="bq query 'SELECT "+ variables + " from [Preselected.Preselected] WHERE " + whereClause + " GROUP BY isPhysicsTrigger, isTof, isEcal'"
+theCommand="bq query 'SELECT "+ variables + " from [" + theTable + "] WHERE " + whereClause + " GROUP BY isPhysicsTrigger, isTof, isEcal'"
 
 print(b.executeQuery(theCommand))
 

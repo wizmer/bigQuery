@@ -107,10 +107,10 @@ def hist2d( nBinsX, firstBinX, lastBinX, nBinsY, firstBinY, lastBinY, varX, varY
 def setTable(newTableName):
     global bigQueryTable
     bigQueryTable=newTableName
-
+    print 'global bigQueryTable set to : ' + bigQueryTable
 
 def makeSelectionMask(cutList):
-    data=executeQuery("bq --format json show Preselected.Preselected")
+    data=executeQuery("bq --format json show " + bigQueryTable)
     for d in data['schema']['fields']:
         if d['name'] == 'selStatus':
             selStatusName=d['description']
