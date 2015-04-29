@@ -39,10 +39,14 @@ def executeQuery(theCommand):
 #     print table
 #     return table
 
+def bin(nBins, firstBin, lastBin, var):
+    # find in which bin is var
+    binWidth=float(lastBin-firstBin)/nBins
+    return " INTEGER(FLOOR( ( (" + var + ") - (" + str(firstBin) + "))/(" + str(binWidth) + ") )) "
 
 def hist( nBins, firstBin, lastBin, var, cut='' ):
     binWidth=float(lastBin-firstBin)/nBins
-    theCommand="bq --format json query -n " + str(nBins+10) + " \'SELECT INTEGER(FLOOR( ( (" + var + ") - (" + str(firstBin) + "))/(" + str(binWidth) + ") )) as binX,COUNT(1) FROM " + bigQueryTable
+    theCommand="bq --format json query -n " + str(nBins+10) + " \'SELECT " + bin(nBins,firstBin,lastBin,var) + " as binX,COUNT(1) FROM " + bigQueryTable
     if cut :
         theCommand+=" WHERE (" + cut + ") "
 
@@ -59,13 +63,13 @@ def hist( nBins, firstBin, lastBin, var, cut='' ):
         for d in data:
             L[int(d['binX'])]=float(d['f0_'])
             
-            x=[firstBin + i*binWidth for i in range(nBins)]
-            hist, bins = np.histogram(x, range=(firstBin,lastBin),bins=nBins, weights=L)
-            width = 0.7 * (bins[1] - bins[0])
-            center = (bins[:-1] + bins[1:]) / 2
-            #    plt.yscale('log')
-            plt.bar(center, hist, width=width)
-            plt.show()
+        x=[firstBin + i*binWidth for i in range(nBins)]
+        hist, bins = np.histogram(x, range=(firstBin,lastBin),bins=nBins, weights=L)
+        width = 0.7 * (bins[1] - bins[0])
+        center = (bins[:-1] + bins[1:]) / 2
+        #    plt.yscale('log')
+        plt.bar(center, hist, width=width)
+        plt.show()
     except ValueError:
                 print 'no json data'
                 
@@ -75,7 +79,7 @@ def hist2d( nBinsX, firstBinX, lastBinX, nBinsY, firstBinY, lastBinY, varX, varY
     binWidthX=float(lastBinX-firstBinX)/nBinsX
     binWidthY=float(lastBinY-firstBinY)/nBinsY
 
-    theCommand="bq --format json query -n " + str(nBinsX*nBinsY+10) + " \'SELECT INTEGER(FLOOR( ((" + varX + ") - (" + str(firstBinX) + "))/(" + str(binWidthX) + ") )) as binX, INTEGER(FLOOR( ((" + varY + ") - (" + str(firstBinY) + "))/(" + str(binWidthY) + "))) as binY,COUNT(1) FROM " + bigQueryTable
+    theCommand="bq --format json query -n " + str(nBinsX*nBinsY+10) + " \'SELECT " + bin(nBinsX,firstBinX,lastBinX,varX) + " as binX, " + bin(nBinsY,firstBinY,lastBinY,varY) + " as binY,COUNT(1) FROM " + bigQueryTable
     if cut :
         theCommand+=" WHERE (" + cut + ")"
 
