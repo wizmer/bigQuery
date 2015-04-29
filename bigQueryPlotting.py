@@ -5,31 +5,39 @@ import numpy as np
 import matplotlib.pyplot as plt
 import subprocess
 import json
+import bq
 
 bigQueryTable="[Preselected.Preselected]"
 
 def executeQuery(theCommand):
     #os.system(theCommand)
     print theCommand
-    output = subprocess.check_output(theCommand, shell=True)
+    rawOutput = subprocess.check_output(theCommand, shell=True)
 
     f = open('log','w')
-    f.write(output)
+    f.write(rawOutput)
     f.close()
 
+    output=rawOutput
     if output[0] is not '{' and output[0] is not '[':
-        output=output.split('\n')[1]
-
-    # if output[0] is '{':
-    #     output = output.strip('\n')
-    #     output = "[%s]" % output
-    #     print output
+        output=rawOutput.split('\n')[1]
 
     try:
         jsonData=json.loads(output)
+        return jsonData
 
     except ValueError:
         print 'no json data'
+        print rawOutput
+
+
+
+# def executeQuery(theCommand):
+#     client = bq.Client.Get()
+#     tableid = client.Query(theCommand)['configuration']['query']['destinationTable']
+#     table = client.ReadTableRows(tableid)
+#     print table
+#     return table
 
 
 def hist( nBins, firstBin, lastBin, var, cut='' ):
@@ -40,13 +48,13 @@ def hist( nBins, firstBin, lastBin, var, cut='' ):
 
     theCommand+=" GROUP BY binX"
     theCommand+=" HAVING binX >= 0 AND binX < (" + str(nBins)+ " )"
-    theCommand+=" ORDER BY binX \'"
+    theCommand+=" ORDER BY binX\'"
 
     try:
         data = executeQuery(theCommand)
 
         L=[0 for i in range(nBins)]
-
+    
 
         for d in data:
             L[int(d['binX'])]=float(d['f0_'])
@@ -58,8 +66,8 @@ def hist( nBins, firstBin, lastBin, var, cut='' ):
             #    plt.yscale('log')
             plt.bar(center, hist, width=width)
             plt.show()
-        except Exception:
-            print 'no json data'
+    except ValueError:
+                print 'no json data'
                 
 
 
