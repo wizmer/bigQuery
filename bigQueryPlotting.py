@@ -5,27 +5,35 @@ import numpy as np
 import matplotlib.pyplot as plt
 import subprocess
 import json
-import bq
+#import bq
 
 bigQueryTable="[Preselected.Preselected]"
 
 def executeQuery(theCommand):
     #os.system(theCommand)
     print theCommand
-    rawOutput = subprocess.check_output(theCommand, shell=True)
-
-    f = open('log','w')
-    f.write(rawOutput)
-    f.close()
-
-    output=rawOutput
-    if output[0] is not '{' and output[0] is not '[':
-        output=rawOutput.split('\n')[1]
-
     try:
+
+        rawOutput = subprocess.check_output(theCommand, stderr=subprocess.STDOUT,shell=True)
+
+        f = open('log','w')
+        f.write(rawOutput)
+        f.close()
+        
+        output=rawOutput
+        if output[0] is not '{' and output[0] is not '[':
+            output=rawOutput.split('\n')[1]
+
         jsonData=json.loads(output)
+        print output
         return jsonData
 
+    except subprocess.CalledProcessError as exc:
+        print("Status : FAIL", exc.returncode)
+        outputError=exc.output.split('\n')
+        for o in outputError:
+            print o
+        
     except ValueError:
         print 'no json data'
         print rawOutput
@@ -43,6 +51,32 @@ def bin(nBins, firstBin, lastBin, var):
     # find in which bin is var
     binWidth=float(lastBin-firstBin)/nBins
     return " INTEGER(FLOOR( ( (" + var + ") - (" + str(firstBin) + "))/(" + str(binWidth) + ") )) "
+
+def histCustomCommand( nBins, firstBin, lastBin, theCommand):
+    binWidth=float(lastBin-firstBin)/nBins
+
+    try:
+        data = executeQuery(theCommand)
+
+        L=[0 for i in range(nBins)]
+        
+
+        for d in data:
+            try:
+                L[int(d['binX'])]=float(d['f0_'])
+            except:
+                pass
+            
+        x=[firstBin + i*binWidth for i in range(nBins)]
+        hist, bins = np.histogram(x, range=(firstBin,lastBin),bins=nBins, weights=L)
+        width = 0.7 * (bins[1] - bins[0])
+        center = (bins[:-1] + bins[1:]) / 2
+        #    plt.yscale('log')
+        plt.bar(center, hist, width=width)
+        plt.show()
+    except ValueError:
+        print 'no json data'
+        
 
 def hist( nBins, firstBin, lastBin, var, cut='' ):
     binWidth=float(lastBin-firstBin)/nBins
