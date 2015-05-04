@@ -25,7 +25,7 @@ def executeQuery(theCommand):
             output=rawOutput.split('\n')[1]
 
         jsonData=json.loads(output)
-        print output
+        #print output
         return jsonData
 
     except subprocess.CalledProcessError as exc:
@@ -33,10 +33,13 @@ def executeQuery(theCommand):
         outputError=exc.output.split('\n')
         for o in outputError:
             print o
+
+        return dict()
         
     except ValueError:
         print 'no json data'
         print rawOutput
+    return dict()
 
 
 
@@ -73,7 +76,7 @@ def histCustomCommand( nBins, firstBin, lastBin, theCommand):
         center = (bins[:-1] + bins[1:]) / 2
         #    plt.yscale('log')
         plt.bar(center, hist, width=width)
-        plt.show()
+        return data
     except ValueError:
         print 'no json data'
         
@@ -88,26 +91,7 @@ def hist( nBins, firstBin, lastBin, var, cut='' ):
     theCommand+=" HAVING binX >= 0 AND binX < (" + str(nBins)+ " )"
     theCommand+=" ORDER BY binX\'"
 
-    try:
-        data = executeQuery(theCommand)
-
-        L=[0 for i in range(nBins)]
-    
-
-        for d in data:
-            L[int(d['binX'])]=float(d['f0_'])
-            
-        x=[firstBin + i*binWidth for i in range(nBins)]
-        hist, bins = np.histogram(x, range=(firstBin,lastBin),bins=nBins, weights=L)
-        width = 0.7 * (bins[1] - bins[0])
-        center = (bins[:-1] + bins[1:]) / 2
-        #    plt.yscale('log')
-        plt.bar(center, hist, width=width)
-        plt.show()
-    except ValueError:
-                print 'no json data'
-                
-
+    histCustomCommand( nBins, firstBin, lastBin, theCommand )
 
 def hist2d( nBinsX, firstBinX, lastBinX, nBinsY, firstBinY, lastBinY, varX, varY, cut='' ):
     binWidthX=float(lastBinX-firstBinX)/nBinsX
