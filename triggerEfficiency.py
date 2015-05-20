@@ -18,7 +18,8 @@ theTable="full_test.full_test"
 b.setTable(theTable)
 
 theMask=b.makeSelectionMask(masks)
-print "{0:b}".format(theMask)
+# print theMask
+# print "{0:b}".format(theMask)
 
 mass = "(Rfull * sqrt(1 - pow(BetaTOF,2)) / BetaTOF)"
 
@@ -39,8 +40,8 @@ isEcal="(JMembPatt>>11)&1 as isEcal"
 
 variables='{} as binX, {},{},{},COUNT(1)'.format(b.bin(nBins,firstBin,lastBin,'Rfull'),isPhysicsTrigger,isTof,isEcal)
 
-queryOption=" --require_cache "
-globalOptions=' --format json '
+# queryOption=" --require_cache "
+# globalOptions=' --format json '
 
 theCommand="""bq """ + globalOptions + """ query -n 10000 """ + queryOption + """'
 SELECT binX, IF(nTofNoEcal + nEcalAll > 0,nPhysics*100/(nPhysics + nEcalNoTof*1000 + nTofAll*100),100), nTofAll, nEcalNoTof, IF(nTofNoEcal + nEcalAll > 0,nPhysics*100/(nPhysics + nEcalAll*1000 + nTofNoEcal*100),100), nPhysics, nEcalAll, nTofNoEcal FROM (
