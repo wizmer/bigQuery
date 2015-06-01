@@ -9,6 +9,9 @@ import bq
 import pickle as pkl
 import histQueryFactory
 import pandas as pd
+from matplotlib import cm
+from matplotlib.pylab import *
+from scipy.optimize import curve_fit
 
 bigQueryTable="full_test.full_test"
 
@@ -28,7 +31,7 @@ def executeQuery(theCommand):
             output=rawOutput.split('\n')[1]
 
         jsonData=json.loads(output)
-        print rawOutput
+        print rawOutput[:1000]
         return jsonData
 
     except subprocess.CalledProcessError as exc:
@@ -51,129 +54,159 @@ def executeQuery(theCommand):
     except ValueError:
         print 'no json data'
         print rawOutput
+        return json.loads('[{"f0_":"0","binX":"0","binY":"0"}]')
     return dict()
 
-# def ListDatasets(service, project):
-#     try:
-#         datasets = service.datasets()
-#         list_reply = datasets.list(projectId=project).execute()
-#         print 'Dataset list:'
-#         pprint.pprint(list_reply)
-#     except HTTPError as err:
-#         print 'Error in ListDatasets:', pprint.pprint(err.content)
-        
-# Run a synchronous query, save the results to a table, overwriting the
-# existing data, and print the first page of results.
-# Default timeout is to wait until query finishes.
-# def runSyncQuery (service, projectId, datasetId, timeout=0):
-#     try:
-#         print 'timeout:%d' % timeout
-#         jobCollection = service.jobs()
-#         queryData = {'query':'SELECT word,count(word) AS count FROM publicdata:samples.shakespeare GROUP BY word;','timeoutMs':timeout}
-
-#     queryReply = jobCollection.query(projectId=projectId, body=queryData).execute()
-
-#     jobReference=queryReply['jobReference']
-
-#     # Timeout exceeded: keep polling until the job is complete.
-#     while(not queryReply['jobComplete']):
-#         print 'Job not yet complete...'
-#         queryReply = jobCollection.getQueryResults(
-#             projectId=jobReference['projectId'],
-#             jobId=jobReference['jobId'],
-#             timeoutMs=timeout).execute()
-
-#     # If the result has rows, print the rows in the reply.
-#     if('rows' in queryReply):
-#         print 'has a rows attribute'
-#         printTableData(queryReply, 0)
-#         currentRow = len(queryReply['rows'])
-
-#       # Loop through each page of data
-#       while('rows' in queryReply and currentRow < queryReply['totalRows']):
-#           queryReply = jobCollection.getQueryResults(
-#               projectId=jobReference['projectId'],
-#               jobId=jobReference['jobId'],
-#               startIndex=currentRow).execute()
-#           if('rows' in queryReply):
-#               printTableData(queryReply, currentRow)
-#               currentRow += len(queryReply['rows'])
-
-#   except AccessTokenRefreshError:
-#       print ("The credentials have been revoked or expired, please re-run"
-#              "the application to re-authorize")
-
-#   except HttpError as err:
-#       print 'Error in runSyncQuery:', pprint.pprint(err.content)
-
-#   except Exception as err:
-#       print 'Undefined error' % err                                                                                                                  
       
-def executeQueryNew(theCommand):
-    client = bq.Client.Get()
-    tableid = client.Query(theCommand)['configuration']['query']['destinationTable']
-    table = client.ReadTableRows(tableid)
-    print table
-    return table
+# def executeQueryNew(theCommand):
+#     client = bq.Client.Get()
+#     tableid = client.Query(theCommand)['configuration']['query']['destinationTable']
+#     table = client.ReadTableRows(tableid)
+#     print table
+#     return table
 
-def bin(nBins, firstBin, lastBin, var):
+def binIndex(nBins, firstBin, lastBin, var):
     # find in which bin is var
     binWidth=float(lastBin-firstBin)/nBins
     return " INTEGER(FLOOR( ( (" + var + ") - (" + str(firstBin) + "))/(" + str(binWidth) + ") )) "
 
-def histCustomCommandOld( nBins, firstBin, lastBin, theCommand):
+def binCenter(nBins, firstBin, lastBin, var):
+    # find in which bin is var
     binWidth=float(lastBin-firstBin)/nBins
-
-    try:
-        data = executeQuery(theCommand)
-
-        L=[0 for i in range(nBins)]
-        
-        for d in data:
-            try:
-                L[int(d['binX'])]=float(d['f0_'])
-            except:
-                pass
-            
-        x=[firstBin + i*binWidth for i in range(nBins)]
-        hist, bins = np.histogram(x, range=(firstBin,lastBin),bins=nBins, weights=L)
-
-        width = 0.7 * (bins[1] - bins[0])
-        center = (bins[:-1] + bins[1:]) / 2
-        #    plt.yscale('log')
-        plt.bar(center, hist, width=width)
-        plt.grid()
-        return hist, center, width
-    except ValueError:
-        print 'no json data'
-
+    iBin=binIndex(nBins, firstBin, lastBin, var)
+    return "({}+({}+0.5)*{})".format(firstBin,iBin,binWidth)
+    
 def histCustomCommand( nBins, firstBin, lastBin, theCommand):
     binWidth=float(lastBin-firstBin)/nBins
 
     try:
         data = executeQuery(theCommand)
 
-        L=[0 for i in range(nBins)]
+        df=pd.read_json(json.dumps(data))
+        return df
+
+    except ValueError:
+        print 'no json data'
+
+def hist2DCustomCommand( nBinsX, firstBinX, lastBinX, nBinsY, firstBinY, lastBinY, theCommand):
+    binWidth=float(lastBin-firstBin)/nBins
+
+    try:
+        data = executeQuery(theCommand)
+
+        L=dict()
+        L['Y']=dict()
+        L['binX']=dict()
+        L['binY']=dict()        
+
+        L['Y']=[0 for i in range(nBins)]
+        L['binX']=[firstBinX+0.5*binWidthX+i*binWidthX for i in range(nBinsX)]
+        L['binY']=[firstBinY+0.5*binWidthY+i*binWidthY for i in range(nBinsY)]
+
+        L = [[0 for x in range(nBinsX)] for y in range(nBinsY)] 
 
         for d in data:
             try:
-                L[int(d['binX'])]=float(d['f0_'])
+                L['Y'][int(d['binX'])]=float(d['f0_'])
+                L['Y'][int(d['binX'])]=float(d['f0_'])
             except:
                 pass
 
-        dataFrame=pd.DataFrame(np.array(L),columns=['Y'])
+        dataFrame=pd.DataFrame(L)
         return dataFrame
     except ValueError:
         print 'no json data'
 
-def hist( nBins, firstBin, lastBin, var, cut='', queryOption='' ):
+
+class Hist:
+    
+    def __init__(self,df,nBinsX,firstBinX,lastBinX,nBinsY=None,firstBinY=None,lastBinY=None):
+        self.df=df
+
+        self.nBinsX=nBinsX
+        self.firstBinX=firstBinX
+        self.lastBinX=lastBinX
+        self.nDimension=1
+
+        if not nBinsY: return
+            
+        self.nBinsY=nBinsY
+        self.firstBinY=firstBinY
+        self.lastBinY=lastBinY        
+        self.nDimension=2
+        self.matrix = zeros([self.nBinsX,self.nBinsY])
+        for index, row in self.df.iterrows():
+            self.matrix[ row['binX'], row['binY'] ] = log10(row['f0_'])
+        self.matrix=np.rot90(self.matrix)
+
+
+    def sliceY(self,bin):
+        df=self.df[self.df['binX']==bin]
+        df=df.drop('binX', 1)
+        df.columns=['binX','f0_']
+        binWidthY=float(self.lastBinY-self.firstBinY)/self.nBinsY
+        df['binX'] = self.firstBinY + (0.5+df['binX'])*binWidthY
+
+        return Hist(df,self.nBinsY,self.firstBinY,self.lastBinY)
+
+        
+    def fit(self,fitFunction,plot=True,fittingRange=None,**kwargs):
+        if self.df.empty:
+            return
+            
+        X=self.df['binX'].tolist()
+        Y=self.df['f0_'].tolist()
+
+        if fittingRange is not None:
+            index = (np.array(X) > fittingRange[0]) & (np.array(X) < fittingRange[1])
+            X=np.array(X)[index]
+            Y=np.array(Y)[index]
+
+        popt, pcov = curve_fit(fitFunction,X,Y,**kwargs)
+
+        if plot:
+            print 'yolo'
+            plt.figure()
+            self.plot()
+            plt.plot(X, fitFunction(X, *popt))
+
+        return popt, pcov
+                    
+
+    def plot(self,**kwargs):
+        if self.df.empty:
+            return self
+            
+        if self.nDimension == 1:
+            self.df.plot(x='binX',drawstyle='steps',**kwargs)
+            plt.xticks(np.arange(self.firstBinX,self.lastBinX,float(self.lastBinX-self.firstBinX)/5))
+            return self
+        else:
+            matshow(self.matrix,extent=[self.firstBinX,self.lastBinX,self.firstBinY,self.lastBinY],aspect="auto", **kwargs)
+            plt.xticks(np.arange(self.firstBinX,self.lastBinX,float(self.lastBinX-self.firstBinX)/5))
+            plt.yticks(np.arange(self.firstBinY,self.lastBinY,float(self.lastBinY-self.firstBinY)/5)) 
+            return self
+
+            
+
+    
+def hist( nBins, firstBin, lastBin, var, cut='', queryOption='', requery=False ):
+    cacheName='hist1D_nBins={}_firstBin={}_lastBin={}_var={}_cut={}.pkl'.format(nBins,firstBin,lastBin,var,cut)
+    dirName=os.environ.get('HOME')+'/.bigQueryCached/'
+
+    if requery is False:
+        cachedResult=getHist(dirName,cacheName)
+        if cachedResult is not None:
+            histo=Hist(cachedResult, nBins, firstBin, lastBin)
+            return histo
+        
     binWidth=float(lastBin-firstBin)/nBins
-    theCommand="bq --format json query " + queryOption + " -n " + str(nBins+10) + " \'SELECT " + bin(nBins,firstBin,lastBin,var) + " as binX,COUNT(1) FROM " + bigQueryTable
+    theCommand="bq --format json query " + queryOption + " -n " + str(nBins+10) + " \'SELECT " + binCenter(nBins,firstBin,lastBin,var) + " as binX,COUNT(1) FROM " + bigQueryTable
     if cut :
         theCommand+=" WHERE (" + cut + ") "
 
     theCommand+=" GROUP BY binX"
-    theCommand+=" HAVING binX >= 0 AND binX < (" + str(nBins)+ " )"
+    theCommand+=" HAVING binX >= " + str(firstBin) + " AND binX < (" + str(lastBin)+ " )"
     theCommand+=" ORDER BY binX\'"
 
     # h = histQueryFactory.HistQueryFactory()
@@ -181,14 +214,24 @@ def hist( nBins, firstBin, lastBin, var, cut='', queryOption='' ):
     # h.add_condition(cut)
     #theSelectClause=str(h)
     #theCommand="bq --format json query " + queryOption + " -n " + str(nBins+10) + " \'" + theSelectClause + " \'" 
+    df=histCustomCommand( nBins, firstBin, lastBin, theCommand )
+    saveHist(df,dirName,cacheName)
+    return Hist( df, nBins, firstBin, lastBin )
     
-    return histCustomCommand( nBins, firstBin, lastBin, theCommand )
 
-def hist2d( nBinsX, firstBinX, lastBinX, nBinsY, firstBinY, lastBinY, varX, varY, cut='' ):
+def hist2d( nBinsX, firstBinX, lastBinX, nBinsY, firstBinY, lastBinY, varX, varY, cut='', requery=False ):
+    cacheName='hist2D_nBinsX={}_firstBinX={}_lastBinX={}_varX={}_nBinsY={}_firstBinY={}_lastBinY={}_varY={}_cut={}.pkl'.format(nBinsX,firstBinX,lastBinX,varX,nBinsY,firstBinY,lastBinY,varY,cut)
+    dirName=os.environ.get('HOME')+'/.bigQueryCached/'
+
+    cachedResult=getHist(dirName,cacheName)
+    if requery is False and cachedResult is not None:
+        histo=Hist(cachedResult,nBinsX, firstBinX, lastBinX, nBinsY, firstBinY, lastBinY)
+        return histo
+
     binWidthX=float(lastBinX-firstBinX)/nBinsX
     binWidthY=float(lastBinY-firstBinY)/nBinsY
 
-    theCommand="bq --format json query -n " + str(nBinsX*nBinsY+10) + " \'SELECT " + bin(nBinsX,firstBinX,lastBinX,varX) + " as binX, " + bin(nBinsY,firstBinY,lastBinY,varY) + " as binY,COUNT(1) FROM " + bigQueryTable
+    theCommand="bq --format json query -n " + str(nBinsX*nBinsY+10) + " \'SELECT " + binIndex(nBinsX,firstBinX,lastBinX,varX) + " as binX, " + binIndex(nBinsY,firstBinY,lastBinY,varY) + " as binY,COUNT(1) FROM " + bigQueryTable
     if cut :
         theCommand+=" WHERE (" + cut + ")"
 
@@ -196,22 +239,25 @@ def hist2d( nBinsX, firstBinX, lastBinX, nBinsY, firstBinY, lastBinY, varX, varY
     theCommand+=" HAVING binX >= 0 AND binX < (" + str(nBinsX) + ") AND binY >= 0 AND binY < (" + str(nBinsY) + ")"
     theCommand+=" ORDER BY binX,binY \'"
 
-
-    L=[0 for i in range(nBinsX*nBinsY)]
-
     data = executeQuery(theCommand)
+    df=pd.read_json(json.dumps(data))
+    saveHist(df,dirName,cacheName)
+
     
-    for d in data:
-        L[int(d['binX'])*nBinsY+int(d['binY'])]=float(d['f0_'])
+    histo=Hist(df,nBinsX, firstBinX, lastBinX, nBinsY, firstBinY, lastBinY)
+    print 'the hist : {}'.format(histo)
+    return histo
+    # for d in data:
+    #     L[int(d['binX'])*nBinsY+int(d['binY'])]=float(d['f0_'])
         
-    x=[firstBinX + (i/nBinsY)*binWidthX  for i in range(nBinsX*nBinsY)]
-    y=[firstBinY + (i%nBinsY)*binWidthY for i in range(nBinsX*nBinsY)]
+    # x=[firstBinX + (i/nBinsY)*binWidthX  for i in range(nBinsX*nBinsY)]
+    # y=[firstBinY + (i%nBinsY)*binWidthY for i in range(nBinsX*nBinsY)]
 
-    plt.hist2d(x,y, bins=[nBinsX,nBinsY], range=[[firstBinX, lastBinX], [firstBinY, lastBinY]], weights=L)
-    plt.colorbar()
+    # plt.hist2d(x,y, bins=[nBinsX,nBinsY], range=[[firstBinX, lastBinX], [firstBinY, lastBinY]], weights=L)
+    # plt.colorbar()
 
-    plt.show()
-    return hist
+    # plt.show()
+    # return hist
 
 
 def setTable(newTableName):
@@ -240,17 +286,31 @@ def makeOldSelectionMask(cutList):
 
     return theMask
 
-def makeSelectionMask(cutList):
+def singleton(cls):
+    obj = cls()
+    # Always return the same object
+    cls.__new__ = staticmethod(lambda cls: obj)
+    # Disable __init__
+    try:
+        del cls.__init__
+    except AttributeError:
+        pass
+        return cls
+
+@singleton
+class SelStatusDescriptor:
     data=executeQuery("bq --format json show " + bigQueryTable)
     for d in data['schema']['fields']:
         if d['name'] == 'selStatus':
             selStatusName=d['description']
-    
+
     selStatusName=selStatusName.split(',')
     bitIndex=dict()
     for i in range(len(selStatusName)):
         bitIndex[selStatusName[i]]=i
 
+def makeSelectionMask(cutList):
+    selStatusDescriptor=SelStatusDescriptor()
     selMask=0 # has a 1 for every bit that has to be checked
     statusMask=0 # take the bit value for every bit that has to be checked
     for cut in cutList:
@@ -259,21 +319,24 @@ def makeSelectionMask(cutList):
             val=0
             cut=cut[1:]
             
-        if cut in bitIndex:
-            selMask+=1<<bitIndex[cut]
-            statusMask+=val<<bitIndex[cut]
+        if cut in selStatusDescriptor.bitIndex:
+            selMask+=1<<selStatusDescriptor.bitIndex[cut]
+            statusMask+=val<<selStatusDescriptor.bitIndex[cut]
         else:
             print 'Cut ' + cut + ' not found !'
             return ''
 
     return ' ((selStatus^' + str(statusMask) + ')&' + str(selMask) + ')==0 '
 
-def saveHist(center,hist,width,filename):
-    data=[hist,center,width]
-    f=open(filename,'wb')
+def saveHist(data,dirname,filename):
+    f=open(dirname+'/'+str(filename.__hash__()),'wb')
     return pkl.dump(data,f)
 
-def getHist(filename):
-    f=open(filename)
-    data=pkl.load(f)
-    return plt.bar(data[0], data[1], width=data[2])
+def getHist(dirname,filename):
+    print 'loading : ' + filename
+    try:
+        f=open(dirname+'/'+str(filename.__hash__()))
+        return pkl.load(f)
+    except IOError:
+        return None
+
