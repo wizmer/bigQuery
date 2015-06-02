@@ -48,13 +48,13 @@ def logp(value):
 
     return log+smoothness
 
-def generateMCMC(filename):
+def generateMCMC(filename,threadNumber=1):
     threads=[]
-    for i in range(4):
+    for i in range(threadNumber):
         a=mcmc.MCMC('thread{}_'.format(i)+filename)
         a.setLogLikelihoodFunction(logp)
         a.setInitialConditions(realFlux)
-        a.setSteps(100000)
+        a.setSteps(10000000)
         threads.append(a)
 
     for t in threads:
@@ -97,16 +97,21 @@ def loadMCMC(filename):
         #hist(np.array(a.trace)[:,i][burnInLength::correlationLength],bins=100)
 
         for iVar in range(metadata['nVar']):
+            print chunk['numberOfSteps']
             if i==0:
-                counts, bins[iVar], totalPatch=hist(np.array(chunk[1])[:,iVar][burnInLength::correlationLength],bins=100)
+                counts, bins[iVar], totalPatch=hist(np.array(chunk['trace'])[:,iVar][burnInLength:chunk['numberOfSteps']:correlationLength],bins=100)
                 totalCount[iVar]=counts
             else:
-                counts, b, totalPatch=hist(np.array(chunk[1])[:,iVar][burnInLength::correlationLength],bins=bins[iVar])
+                counts, b, totalPatch=hist(np.array(chunk['trace'])[:,iVar][burnInLength:chunk['numberOfSteps']:correlationLength],bins=bins[iVar])
                 totalCount[iVar]+=counts
 
-        burnInLength-=len(chunk[0])
+
+        burnInLength-=chunk['numberOfSteps']
         if burnInLength < 0: burnInLength=0
         i+=1
+
+        del chunk
+
 
     for iVar in range(metadata['nVar']):
         plt.subplot(2,2,iVar+1)
@@ -116,8 +121,8 @@ def loadMCMC(filename):
 
     return mcmc
 
-a=generateMCMC('test.pkl')
-#a=loadMCMC('test.pkl')
+a=generateMCMC('test.pkl',threadNumber=4)
+#=loadMCMC('thread0_test.pkl')
 
 
 # for i in range(n):

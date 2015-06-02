@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import os
 import gzip
 from threading import Thread
-
+from multiprocessing import Process
 n=4
 
 
@@ -17,36 +17,44 @@ def default_logp(value):
         log+=var
         return log
     
-class MCMC(Thread):
+class MCMC(Process):
+    chunkSize=1000000
+    
     def __init__(self,filename):
-        Thread.__init__(self)
+        Process.__init__(self)
         self.filename=filename
-        self.trace=[]
-        self.log_likelihood=[] # the chain containing the log likelihood of all accepted points
         self.nStep=10
         self.current_point=[10 for i in range(n)] # the chain starting point
         self.nVar=n
         self.verbose=False
+        self.trace=np.zeros((self.chunkSize,self.nVar))
+        self.log_likelihood=np.zeros((self.chunkSize,self.nVar)) # the chain containing the log likelihood of all accepted points
         self.sigma=[1 for i in range(n)] # the sigmas for the proposal function
         self.logp=default_logp
-        self.chunk=[self.log_likelihood,self.trace]
+        self.chunkStepNumber=0
 
     def run(self):
         self.loop()
 
     def saveMetaData(self):
-        print 'saving metadata...'
         f=gzip.open(self.filename,'a')
         pickle.dump(self.metadata,f)
         f.close()
 
     def saveChunk(self):
         print 'saving chunk...'
+        print 'open file'
         f=gzip.open(self.filename,'a')
-        pickle.dump(self.chunk,f)
+        print 'file opened'
+        chunk={'numberOfSteps':self.chunkStepNumber,'logLikelihood':self.log_likelihood,'trace':self.trace}
+        pickle.dump(chunk,f)
+        print 'dumped'
         f.close()
-        del self.log_likelihood[:]
-        del self.trace[:]
+        print 'close'
+        self.log_likelihood=np.zeros((self.chunkSize,self.nVar))
+        self.trace=np.zeros((self.chunkSize,self.nVar))
+        print 'delete'
+        self.chunkStepNumber=0
 
     def setInitialConditions(self,initialCondition):
         self.current_point=initialCondition
@@ -74,8 +82,9 @@ class MCMC(Thread):
         if self.verbose: print 'accepted'
         self.current_point=self.proposed_point
         self.current_log_likelihood=self.proposed_log_likelihood
-        self.trace.append(self.current_point)
-        self.log_likelihood.append(self.current_log_likelihood)
+        self.trace[self.chunkStepNumber]=self.current_point
+        self.log_likelihood[self.chunkStepNumber]=self.current_log_likelihood
+        self.chunkStepNumber+=1
 
     def loop(self):
         self.metadata={'initialPoints':self.current_point,'nStep':self.nStep,'sigmas':self.sigma,'nVar':self.nVar}
@@ -85,8 +94,7 @@ class MCMC(Thread):
         self.current_log_likelihood=self.logp(self.current_point)
 
         for i in range(self.nStep):
-            #if i%50000 == 0: print '{}/{} : {}'.format(i,self.nStep,int(float(i)/float(self.nStep)*100))
-            if i%50000 == 0: print '{}/{} : {}'.format(i,self.nStep,int(float(i)/float(self.nStep)*100))
+            if i%50000 == 0: print '{}/{} : {}%'.format(i,self.nStep,int(float(i)/float(self.nStep)*100))
             self.proposed_point=self.proposal_function(self.current_point)
             self.proposed_log_likelihood=self.logp(self.proposed_point)
             
@@ -103,15 +111,14 @@ class MCMC(Thread):
                 if np.random.rand() < self.the_likelihood_ratio:
                     self.updateStep()
 
-
             if self.verbose:
                 print 'current_log_likelihood: {}'.format(self.current_log_likelihood)    
                 print 'proposed_log_likelihood: {}'.format(self.proposed_log_likelihood)
                 print 'likelihood_ratio: {}'.format(self.the_likelihood_ratio)
 
-            if len(self.log_likelihood) >= 5000000:
+            if self.chunkStepNumber >= self.chunkSize:
                 self.saveChunk()
 
-        if len(self.log_likelihood) > 0: self.saveChunk()
+        if self.chunkStepNumber > 0: self.saveChunk()
 
 
