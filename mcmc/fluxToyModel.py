@@ -5,9 +5,6 @@ import numpy as np
 from pylab import hist, show
 
 n=4
-mean=[1,400,30,50]
-sigma=[3,20,5,5]
-
 
 def fluxFunction(x):
     return 1e3*x**-2.7
@@ -23,7 +20,8 @@ for i in range(n):
 
 realFlux=[fluxFunction(i+1) for i in range(n)]
 expectedAfterSmearing=cov.dot(np.array(realFlux))
-data_observed=np.random.poisson(expectedAfterSmearing)            
+#data_observed=np.random.poisson(expectedAfterSmearing)
+data_observed=expectedAfterSmearing
 
 def logp(value):
     theExpectedFlux=cov.dot(np.array(value))
@@ -34,38 +32,117 @@ def logp(value):
         var=data_observed[i]*np.log(theExpectedFlux[i]) - theExpectedFlux[i]
         log+=var
 
-    return log
+    FirstDerivative=[]
+    for i in range(1,n):
+        FirstDerivative.append( (np.log(theExpectedFlux[i]) - np.log(theExpectedFlux[i-1]))/( np.log(i+1) - np.log(i)) )
+
+    smoothness=0
+    alpha=0
+    for i in range(1,len(FirstDerivative)):
+        var=alpha* np.fabs(( FirstDerivative[i] - FirstDerivative[i-1] ) / ( np.log(i+0.5) - np.log(i-0.5)))
+        smoothness-=var
+
+#    print '{},{}'.format(log,smoothness)
+
+    return log+smoothness
 
 def generateMCMC(filename):
-    a=mcmc.MCMC()
+    a=mcmc.MCMC('test')
     a.setLogLikelihoodFunction(logp)
-    a.
-    a.setSteps(10000)
+    a.setInitialConditions(realFlux)
+    a.setSteps(1000000)
     a.loop()
-    f=open(filename,'wb')
-    pickle.dump(a,f)
-    f.close()
+    # f=open(filename,'wb')
+    # pickle.dump(a,f)
+    # pickle.dump(realFlux,f)
+    # pickle.dump(data_observed,f)
+    # f.close()
     return a
 
 def loadMCMC(filename):
     f=open(filename,'rb')
-    return pickle.load(f)
+    metadata=pickle.load(f)
+    # realFlux=pickle.load(f)
+    # data_observed=pickle.load(f)
+    print metadata
+
+    burnInLength=0
+    correlationLength=1
+    i=0
+
+    totalCount=np.ndarray((4,100))
+    bins=np.ndarray((4,101))
+    
+    while True:
+        try:
+            chunk=pickle.load(f)
+            print 'chunk loaded'
+        except:
+            break
+        #hist(np.array(a.trace)[:,i][burnInLength::correlationLength],bins=100)
+
+        for iVar in range(metadata['nVar']):
+            if i==0:
+                counts, bins[iVar], totalPatch=hist(np.array(chunk[1])[:,iVar][burnInLength::correlationLength],bins=100)
+                totalCount[iVar]=counts
+            else:
+                counts, b, totalPatch=hist(np.array(chunk[1])[:,iVar][burnInLength::correlationLength],bins=bins[iVar])
+                totalCount[iVar]+=counts
+
+        burnInLength-=len(chunk[0])
+        if burnInLength < 0: burnInLength=0
+        i+=1
+
+    for iVar in range(metadata['nVar']):
+        plt.subplot(2,2,iVar+1)
+        plt.plot(bins[iVar][:-1],totalCount[iVar],drawstyle='steps')
+        plt.axvline(realFlux[iVar])
+    show()
+
+    return mcmc
 
 filename='test.pkl'
-a=generateMCMC(filename)
-#a=loadMCMC('test.pkl')
+#a=generateMCMC(filename)
+a=loadMCMC('fat.pkl')
 
-burnInLength=600
-correlationLength=1
-for i in range(n):
-    plt.figure()
-    plt.subplot(211)
 
-    ar=np.array(a.trace)[:,i][burnInLength::correlationLength]
-    plt.plot(range(len(ar)),ar)
+# for i in range(n):
+#     plt.figure('Bin #{}'.format(i))
+#     plt.subplot(211)
 
-    plt.subplot(212)
-    hist(np.array(a.trace)[:,i][burnInLength::correlationLength],bins=100)    
-    #plt.axvline(realFlux[i])
+#     ar=np.array(a.trace)[:,i][burnInLength::correlationLength]
+#     plt.plot(range(len(ar)),ar)
+#     plt.axhline(realFlux[i])
 
-show()
+#     plt.subplot(212)
+#     hist(np.array(a.trace)[:,i][burnInLength::correlationLength],bins=100)    
+#     plt.axvline(realFlux[i])
+
+# plt.figure('Correlation plots')
+# for i in range(n):
+#     for j in range(n):
+#         plotNum=i*n+j+1
+#         plt.subplot(n,n,plotNum)
+#         if i==j:
+#             hist(np.array(a.trace)[:,i][burnInLength::correlationLength],bins=100)
+#             plt.axvline(realFlux[i])
+#         elif i>j:
+#             plt.plot(np.array(a.trace)[:,j][burnInLength::correlationLength],np.array(a.trace)[:,i][burnInLength::correlationLength])
+#             plt.title('titre {},{}'.format(i,j))
+
+# plt.figure('Log likelihood')
+# ar=a.log_likelihood[burnInLength::correlationLength]
+# plt.plot(range(len(ar)),ar)
+
+# plt.figure('flux')
+# plt.subplot(211)
+# ar=np.array(a.trace)[burnInLength::correlationLength]
+# for i in range(len(ar)):
+#     plt.plot(range(len(ar[i])),ar[i])
+
+# plt.subplot(212)
+# plt.xscale('log')
+# plt.yscale('log')
+# for i in range(len(ar)):
+#     plt.plot(range(1,len(ar[i])+1),ar[i])
+# show()
