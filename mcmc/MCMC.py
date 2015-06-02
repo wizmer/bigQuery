@@ -2,6 +2,7 @@ import pickle
 import numpy as np
 import matplotlib.pyplot as plt
 import os
+import gzip
 
 n=4
 
@@ -30,13 +31,13 @@ class MCMC:
 
     def saveMetaData(self):
         print 'saving metadata...'
-        f=open(self.filename+'.pkl','a')
+        f=gzip.open(self.filename,'a')
         pickle.dump(self.metadata,f)
         f.close()
 
     def saveChunk(self):
         print 'saving chunk...'
-        f=open(self.filename+'.pkl','a')
+        f=gzip.open(self.filename,'a')
         pickle.dump(self.chunk,f)
         f.close()
         del self.log_likelihood[:]
@@ -73,13 +74,13 @@ class MCMC:
 
     def loop(self):
         self.metadata={'initialPoints':self.current_point,'nStep':self.nStep,'sigmas':self.sigma,'nVar':self.nVar}
-        os.system('rm -f '+filename+'.pkl')
+        os.system('rm -f '+self.filename)
         self.saveMetaData()
 
         self.current_log_likelihood=self.logp(self.current_point)
 
         for i in range(self.nStep):
-            if i%50000 == 0: print i
+            if i%50000 == 0: print '{}/{} : {}'.format(i,self.nStep,int(float(i)/float(self.nStep)*100))
             self.proposed_point=self.proposal_function(self.current_point)
             self.proposed_log_likelihood=self.logp(self.proposed_point)
             
@@ -108,15 +109,3 @@ class MCMC:
         if len(self.log_likelihood) > 0: self.saveChunk()
 
 
-def generateMCMC(filename):
-    a=MCMC()
-    a.setSteps(1000000)
-    a.loop()
-    f=open(filename,'wb')
-    pickle.dump(a,f)
-    f.close()
-    return a
-
-def loadMCMC(filename):
-    f=open(filename,'rb')
-    return pickle.load(f)

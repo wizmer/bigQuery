@@ -3,6 +3,7 @@ import pickle
 import matplotlib.pyplot as plt
 import numpy as np
 from pylab import hist, show
+import gzip
 
 n=4
 
@@ -47,7 +48,7 @@ def logp(value):
     return log+smoothness
 
 def generateMCMC(filename):
-    a=mcmc.MCMC('test')
+    a=mcmc.MCMC(filename)
     a.setLogLikelihoodFunction(logp)
     a.setInitialConditions(realFlux)
     a.setSteps(1000000)
@@ -60,7 +61,7 @@ def generateMCMC(filename):
     return a
 
 def loadMCMC(filename):
-    f=open(filename,'rb')
+    f=gzip.open(filename,'rb')
     metadata=pickle.load(f)
     # realFlux=pickle.load(f)
     # data_observed=pickle.load(f)
@@ -101,8 +102,7 @@ def loadMCMC(filename):
 
     return mcmc
 
-filename='test.pkl'
-#a=generateMCMC(filename)
+#a=generateMCMC('test.pkl')
 a=loadMCMC('fat.pkl')
 
 
