@@ -15,6 +15,7 @@ class HistQueryFactory(object):
         self.binnames = {}
         self.varorder = []
         self.extra_conditions = []
+        self.aggregators = [] 
     
     def add_variable(self, var, min=0, max=1, nbins=100, binname=None):
         self.variables[var] = [min, max, nbins]
@@ -23,6 +24,9 @@ class HistQueryFactory(object):
     
     def add_condition(self, condition):
         self.extra_conditions.append(condition)
+        
+    def add_aggregator(self, aggregator):
+        self.aggregators.append(aggregator)
         
     def get_variables(self):
         return [self.binnames[v] for v in self.varorder]
@@ -35,8 +39,12 @@ class HistQueryFactory(object):
             bname = self.binnames[v]
             select.append(binexpr.format(var=v, mi=mi, N=nb, rng=ma-mi, bname=bname))
             where.append("{0} >= {1} AND {0} < {2}".format(v,mi,ma))
+            
+        if not self.aggregators:
+            select += ["COUNT(1) as count"]
+        else:
+            select += self.aggregators 
         
-        select.append("COUNT(1) as count")
         where += self.extra_conditions
         
         query = \
