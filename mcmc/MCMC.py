@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 import gzip
+from threading import Thread
 
 n=4
 
@@ -16,8 +17,9 @@ def default_logp(value):
         log+=var
         return log
     
-class MCMC:
+class MCMC(Thread):
     def __init__(self,filename):
+        Thread.__init__(self)
         self.filename=filename
         self.trace=[]
         self.log_likelihood=[] # the chain containing the log likelihood of all accepted points
@@ -28,6 +30,9 @@ class MCMC:
         self.sigma=[1 for i in range(n)] # the sigmas for the proposal function
         self.logp=default_logp
         self.chunk=[self.log_likelihood,self.trace]
+
+    def run(self):
+        self.loop()
 
     def saveMetaData(self):
         print 'saving metadata...'
@@ -80,6 +85,7 @@ class MCMC:
         self.current_log_likelihood=self.logp(self.current_point)
 
         for i in range(self.nStep):
+            #if i%50000 == 0: print '{}/{} : {}'.format(i,self.nStep,int(float(i)/float(self.nStep)*100))
             if i%50000 == 0: print '{}/{} : {}'.format(i,self.nStep,int(float(i)/float(self.nStep)*100))
             self.proposed_point=self.proposal_function(self.current_point)
             self.proposed_log_likelihood=self.logp(self.proposed_point)

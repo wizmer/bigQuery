@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from pylab import hist, show
 import gzip
+import time
 
 n=4
 
@@ -48,11 +49,24 @@ def logp(value):
     return log+smoothness
 
 def generateMCMC(filename):
-    a=mcmc.MCMC(filename)
-    a.setLogLikelihoodFunction(logp)
-    a.setInitialConditions(realFlux)
-    a.setSteps(1000000)
-    a.loop()
+    threads=[]
+    for i in range(4):
+        a=mcmc.MCMC('thread{}_'.format(i)+filename)
+        a.setLogLikelihoodFunction(logp)
+        a.setInitialConditions(realFlux)
+        a.setSteps(100000)
+        threads.append(a)
+
+    for t in threads:
+        print 'launching thread'
+        t.start()
+        time.sleep(5)
+
+    for t in threads:
+        t.join()
+        
+    print 'done'
+
     # f=open(filename,'wb')
     # pickle.dump(a,f)
     # pickle.dump(realFlux,f)
@@ -102,8 +116,8 @@ def loadMCMC(filename):
 
     return mcmc
 
-#a=generateMCMC('test.pkl')
-a=loadMCMC('fat.pkl')
+a=generateMCMC('test.pkl')
+#a=loadMCMC('test.pkl')
 
 
 # for i in range(n):
