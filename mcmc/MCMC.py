@@ -1,10 +1,11 @@
-import pickle
+import cPickle as pickle
 import numpy as np
 import matplotlib.pyplot as plt
 import os
 import gzip
 from threading import Thread
 from multiprocessing import Process
+import time
 n=4
 
 
@@ -37,17 +38,21 @@ class MCMC(Process):
         self.loop()
 
     def saveMetaData(self):
-        f=gzip.open(self.filename,'a')
-        pickle.dump(self.metadata,f)
+        f=open(self.filename,'a')
+        pickle.dump(self.metadata,f,2)
         f.close()
 
     def saveChunk(self):
         print 'saving chunk...'
         print 'open file'
-        f=gzip.open(self.filename,'a')
+        #f=gzip.open(self.filename,'a')
+        f=open(self.filename,'a')
         print 'file opened'
         chunk={'numberOfSteps':self.chunkStepNumber,'logLikelihood':self.log_likelihood,'trace':self.trace}
-        pickle.dump(chunk,f)
+        t0=time.clock()
+        pickle.dump(chunk,f,2)
+        t1=time.clock()
+        print t1-t0
         print 'dumped'
         f.close()
         print 'close'
@@ -63,8 +68,7 @@ class MCMC(Process):
         self.sigma=sigma
 
     def proposal_function(self,previous_point):
-        cov=np.diag(self.sigma)
-        return np.random.multivariate_normal(previous_point,cov)
+        return previous_point+self.sigma*np.random.standard_normal(self.nVar)
 
     def setProposalFunction(self,f):
         self.proposal_function=f
@@ -94,7 +98,7 @@ class MCMC(Process):
         self.current_log_likelihood=self.logp(self.current_point)
 
         for i in range(self.nStep):
-            if i%50000 == 0: print '{}/{} : {}%'.format(i,self.nStep,int(float(i)/float(self.nStep)*100))
+            if i%100000 == 0: print '{}/{} : {}%'.format(i,self.nStep,int(float(i)/float(self.nStep)*100))
             self.proposed_point=self.proposal_function(self.current_point)
             self.proposed_log_likelihood=self.logp(self.proposed_point)
             

@@ -1,5 +1,5 @@
 import MCMC as mcmc
-import pickle
+import cPickle as pickle
 import matplotlib.pyplot as plt
 import numpy as np
 from pylab import hist, show
@@ -34,15 +34,16 @@ def logp(value):
         var=data_observed[i]*np.log(theExpectedFlux[i]) - theExpectedFlux[i]
         log+=var
 
-    FirstDerivative=[]
-    for i in range(1,n):
-        FirstDerivative.append( (np.log(theExpectedFlux[i]) - np.log(theExpectedFlux[i-1]))/( np.log(i+1) - np.log(i)) )
-
     smoothness=0
     alpha=0
-    for i in range(1,len(FirstDerivative)):
-        var=alpha* np.fabs(( FirstDerivative[i] - FirstDerivative[i-1] ) / ( np.log(i+0.5) - np.log(i-0.5)))
-        smoothness-=var
+
+    # FirstDerivative=[]
+    # for i in range(1,n):
+    #     FirstDerivative.append( (np.log(theExpectedFlux[i]) - np.log(theExpectedFlux[i-1]))/( np.log(i+1) - np.log(i)) )
+
+    # for i in range(1,len(FirstDerivative)):
+    #     var=alpha* np.fabs(( FirstDerivative[i] - FirstDerivative[i-1] ) / ( np.log(i+0.5) - np.log(i-0.5)))
+    #     smoothness-=var
 
 #    print '{},{}'.format(log,smoothness)
 
@@ -54,13 +55,13 @@ def generateMCMC(filename,threadNumber=1):
         a=mcmc.MCMC('thread{}_'.format(i)+filename)
         a.setLogLikelihoodFunction(logp)
         a.setInitialConditions(realFlux)
-        a.setSteps(10000000)
+        a.setSteps(1000000)
         threads.append(a)
 
     for t in threads:
         print 'launching thread'
         t.start()
-        time.sleep(5)
+        time.sleep(1)
 
     for t in threads:
         t.join()
@@ -75,7 +76,7 @@ def generateMCMC(filename,threadNumber=1):
     return a
 
 def loadMCMC(filename):
-    f=gzip.open(filename,'rb')
+    f=open(filename,'r')
     metadata=pickle.load(f)
     # realFlux=pickle.load(f)
     # data_observed=pickle.load(f)
@@ -83,32 +84,40 @@ def loadMCMC(filename):
 
     burnInLength=0
     correlationLength=1
-    i=0
 
-    totalCount=np.ndarray((4,100))
-    bins=np.ndarray((4,101))
+    totalCount=np.zeros((4,100))
+    bins=np.zeros((4,101))
+    firstHisto=[True]*metadata['nVar']
     
     while True:
         try:
             chunk=pickle.load(f)
             print 'chunk loaded'
+            if burnInLength >= chunk['numberOfSteps']:
+                print 'skip chunk'
+                burnInLength-=chunk['numberOfSteps']
+                if burnInLength < 0: burnInLength=0
+
+                continue
         except:
             break
         #hist(np.array(a.trace)[:,i][burnInLength::correlationLength],bins=100)
 
-        for iVar in range(metadata['nVar']):
-            print chunk['numberOfSteps']
-            if i==0:
-                counts, bins[iVar], totalPatch=hist(np.array(chunk['trace'])[:,iVar][burnInLength:chunk['numberOfSteps']:correlationLength],bins=100)
-                totalCount[iVar]=counts
-            else:
-                counts, b, totalPatch=hist(np.array(chunk['trace'])[:,iVar][burnInLength:chunk['numberOfSteps']:correlationLength],bins=bins[iVar])
-                totalCount[iVar]+=counts
+        try:
+            for iVar in range(metadata['nVar']):
+                if firstHisto[iVar]:
+                    counts, bins[iVar], totalPatch=hist(np.array(chunk['trace'])[:,iVar][burnInLength:chunk['numberOfSteps']:correlationLength],bins=100)
+                    totalCount[iVar]+=counts
+                    firstHisto[iVar]=False
+                else:
+                    counts, b, totalPatch=hist(np.array(chunk['trace'])[:,iVar][burnInLength:chunk['numberOfSteps']:correlationLength],bins=bins[iVar])
+                    totalCount[iVar]+=counts
+        except:
+            pass
 
 
         burnInLength-=chunk['numberOfSteps']
         if burnInLength < 0: burnInLength=0
-        i+=1
 
         del chunk
 
@@ -121,8 +130,8 @@ def loadMCMC(filename):
 
     return mcmc
 
-a=generateMCMC('test.pkl',threadNumber=4)
-#=loadMCMC('thread0_test.pkl')
+#a=generateMCMC('test.pkl',4)
+a=loadMCMC('thread0_test.pkl')
 
 
 # for i in range(n):
