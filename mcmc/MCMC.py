@@ -33,6 +33,7 @@ class MCMC(Process):
         self.sigma=[1 for i in range(n)] # the sigmas for the proposal function
         self.logp=default_logp
         self.chunkStepNumber=0
+        self.seed=0
 
     def run(self):
         self.loop()
@@ -44,21 +45,13 @@ class MCMC(Process):
 
     def saveChunk(self):
         print 'saving chunk...'
-        print 'open file'
         #f=gzip.open(self.filename,'a')
         f=open(self.filename,'a')
-        print 'file opened'
         chunk={'numberOfSteps':self.chunkStepNumber,'logLikelihood':self.log_likelihood,'trace':self.trace}
-        t0=time.clock()
         pickle.dump(chunk,f,2)
-        t1=time.clock()
-        print t1-t0
-        print 'dumped'
         f.close()
-        print 'close'
         self.log_likelihood=np.zeros((self.chunkSize,self.nVar))
         self.trace=np.zeros((self.chunkSize,self.nVar))
-        print 'delete'
         self.chunkStepNumber=0
 
     def setInitialConditions(self,initialCondition):
@@ -91,6 +84,8 @@ class MCMC(Process):
         self.chunkStepNumber+=1
 
     def loop(self):
+        np.random.seed()
+
         self.metadata={'initialPoints':self.current_point,'nStep':self.nStep,'sigmas':self.sigma,'nVar':self.nVar}
         os.system('rm -f '+self.filename)
         self.saveMetaData()

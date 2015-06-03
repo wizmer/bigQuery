@@ -51,11 +51,12 @@ def logp(value):
 
 def generateMCMC(filename,threadNumber=1):
     threads=[]
+
     for i in range(threadNumber):
         a=mcmc.MCMC('thread{}_'.format(i)+filename)
         a.setLogLikelihoodFunction(logp)
         a.setInitialConditions(realFlux)
-        a.setSteps(1000000)
+        a.setSteps(100000)
         threads.append(a)
 
     for t in threads:
@@ -76,8 +77,9 @@ def generateMCMC(filename,threadNumber=1):
     return a
 
 def loadMCMC(filename):
-    f=open(filename,'r')
+    f=open('thread0_'+filename,'r')
     metadata=pickle.load(f)
+    f.close()
     # realFlux=pickle.load(f)
     # data_observed=pickle.load(f)
     print metadata
@@ -86,91 +88,80 @@ def loadMCMC(filename):
     correlationLength=1
 
     totalCount=np.zeros((4,100))
+    heatmap=np.zeros((4,4,100,100))
+    extent=np.zeros((4,4,4))
+
     bins=np.zeros((4,101))
-    firstHisto=[True]*metadata['nVar']
-    
-    while True:
-        try:
-            chunk=pickle.load(f)
-            print 'chunk loaded'
-            if burnInLength >= chunk['numberOfSteps']:
-                print 'skip chunk'
-                burnInLength-=chunk['numberOfSteps']
-                if burnInLength < 0: burnInLength=0
+    firstHisto=True
 
-                continue
-        except:
-            break
-        #hist(np.array(a.trace)[:,i][burnInLength::correlationLength],bins=100)
+    for iFile in range(4):
+        f=open('thread{}_'.format(iFile)+filename,'r')
+        pickle.load(f) #skip metadata
+        remainingBurnInLength=burnInLength
+        while True:
+            try:
+                chunk=pickle.load(f)
+                print 'chunk loaded'
 
-        try:
-            for iVar in range(metadata['nVar']):
-                if firstHisto[iVar]:
-                    counts, bins[iVar], totalPatch=hist(np.array(chunk['trace'])[:,iVar][burnInLength:chunk['numberOfSteps']:correlationLength],bins=100)
-                    totalCount[iVar]+=counts
-                    firstHisto[iVar]=False
+                # skip chunk before burn-in length
+                if remainingBurnInLength >= chunk['numberOfSteps']:
+                    print 'skip chunk'
+                    remainingBurnInLength-=chunk['numberOfSteps']
+                    if remainingBurnInLength < 0: remainingBurnInLength=0
+                    continue
+            except:
+                break
+
+            try:
+                if firstHisto:
+                    for iVar in range(metadata['nVar']):
+                        counts, bins[iVar], totalPatch=hist(np.array(chunk['trace'])[:,iVar][remainingBurnInLength:chunk['numberOfSteps']:correlationLength],bins=100)
+                        totalCount[iVar]+=counts
+                        if iVar == 0:
+                            print counts
+
+                        for jVar in range(metadata['nVar']):
+                            heatmap[iVar][jVar], xedges, yedges = np.histogram2d(np.array(chunk['trace'])[:,iVar][remainingBurnInLength:chunk['numberOfSteps']:correlationLength],np.array(chunk['trace'])[:,jVar][remainingBurnInLength:chunk['numberOfSteps']:correlationLength],bins=100)
+                            extent[iVar][jVar] = [xedges[0], xedges[-1], yedges[0], yedges[-1]]
+
+                    firstHisto=False
+
                 else:
-                    counts, b, totalPatch=hist(np.array(chunk['trace'])[:,iVar][burnInLength:chunk['numberOfSteps']:correlationLength],bins=bins[iVar])
-                    totalCount[iVar]+=counts
-        except:
-            pass
+                    for iVar in range(metadata['nVar']):
+                        counts, b, totalPatch=hist(np.array(chunk['trace'])[:,iVar][remainingBurnInLength:chunk['numberOfSteps']:correlationLength],bins=bins[iVar])
+                        totalCount[iVar]+=counts
+                        if iVar == 0:
+                            print counts
 
+                        for jVar in range(metadata['nVar']):
+                            h, xedges, yedges = np.histogram2d(np.array(chunk['trace'])[:,iVar][remainingBurnInLength:chunk['numberOfSteps']:correlationLength],np.array(chunk['trace'])[:,jVar][remainingBurnInLength:chunk['numberOfSteps']:correlationLength],bins=100,range=[[extent[iVar][jVar][0],extent[iVar][jVar][1]],[extent[iVar][jVar][2],extent[iVar][jVar][3]]])
+                            heatmap[iVar][jVar]+=h
 
-        burnInLength-=chunk['numberOfSteps']
-        if burnInLength < 0: burnInLength=0
+            except:
+                pass
 
-        del chunk
+            remainingBurnInLength-=chunk['numberOfSteps']
+            if remainingBurnInLength < 0: remainingBurnInLength=0
 
+            del chunk
 
+    plt.figure('Correlation plots')
     for iVar in range(metadata['nVar']):
-        plt.subplot(2,2,iVar+1)
-        plt.plot(bins[iVar][:-1],totalCount[iVar],drawstyle='steps')
-        plt.axvline(realFlux[iVar])
+        for jVar in range(metadata['nVar']):
+            plotNum=iVar*metadata['nVar']+jVar+1
+            plt.subplot(metadata['nVar'],metadata['nVar'],plotNum)
+            if iVar==jVar:
+                plt.plot(bins[iVar][:-1],totalCount[iVar],drawstyle='steps')
+                plt.axvline(realFlux[iVar])
+            elif iVar>jVar:
+                plt.imshow(heatmap[jVar][iVar], extent=extent[jVar][iVar],aspect="auto")
+                plt.title('titre {},{}'.format(iVar,jVar))
+    
     show()
 
     return mcmc
 
 #a=generateMCMC('test.pkl',4)
-a=loadMCMC('thread0_test.pkl')
+a=loadMCMC('test.pkl')
 
 
-# for i in range(n):
-#     plt.figure('Bin #{}'.format(i))
-#     plt.subplot(211)
-
-#     ar=np.array(a.trace)[:,i][burnInLength::correlationLength]
-#     plt.plot(range(len(ar)),ar)
-#     plt.axhline(realFlux[i])
-
-#     plt.subplot(212)
-#     hist(np.array(a.trace)[:,i][burnInLength::correlationLength],bins=100)    
-#     plt.axvline(realFlux[i])
-
-# plt.figure('Correlation plots')
-# for i in range(n):
-#     for j in range(n):
-#         plotNum=i*n+j+1
-#         plt.subplot(n,n,plotNum)
-#         if i==j:
-#             hist(np.array(a.trace)[:,i][burnInLength::correlationLength],bins=100)
-#             plt.axvline(realFlux[i])
-#         elif i>j:
-#             plt.plot(np.array(a.trace)[:,j][burnInLength::correlationLength],np.array(a.trace)[:,i][burnInLength::correlationLength])
-#             plt.title('titre {},{}'.format(i,j))
-
-# plt.figure('Log likelihood')
-# ar=a.log_likelihood[burnInLength::correlationLength]
-# plt.plot(range(len(ar)),ar)
-
-# plt.figure('flux')
-# plt.subplot(211)
-# ar=np.array(a.trace)[burnInLength::correlationLength]
-# for i in range(len(ar)):
-#     plt.plot(range(len(ar[i])),ar[i])
-
-# plt.subplot(212)
-# plt.xscale('log')
-# plt.yscale('log')
-# for i in range(len(ar)):
-#     plt.plot(range(1,len(ar[i])+1),ar[i])
-# show()
