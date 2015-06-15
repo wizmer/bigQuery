@@ -5,32 +5,32 @@ import os
 import gzip
 from threading import Thread
 from multiprocessing import Process
+import pandas as pd
 import time
-n=4
-
 
 mean=[1,400,30,50]
 
 def default_logp(value):
     log=0
-    for i in range(n):
+    for i in range(4):
         var=-((value[i]-mean[i])/mean[i])**2
         log+=var
         return log
     
 class MCMC(Process):
-    chunkSize=1000000
+    chunkSize=1e6
     
-    def __init__(self,filename):
+    def __init__(self,filename,initialCondition,realValues=[]):
         Process.__init__(self)
+        self.realValues=realValues
         self.filename=filename
         self.nStep=10
-        self.current_point=[10 for i in range(n)] # the chain starting point
-        self.nVar=n
+        self.current_point=initialCondition # the chain starting point
+        self.nVar=len(initialCondition)
         self.verbose=False
         self.trace=np.zeros((self.chunkSize,self.nVar))
-        self.log_likelihood=np.zeros((self.chunkSize,self.nVar)) # the chain containing the log likelihood of all accepted points
-        self.sigma=[1 for i in range(n)] # the sigmas for the proposal function
+        self.log_likelihood=np.zeros(self.chunkSize) # the chain containing the log likelihood of all accepted points
+        self.sigma=[1 for i in range(self.nVar)] # the sigmas for the proposal function
         self.logp=default_logp
         self.chunkStepNumber=0
         self.seed=0
@@ -39,23 +39,29 @@ class MCMC(Process):
         self.loop()
 
     def saveMetaData(self):
-        f=open(self.filename,'a')
+        print 'save metadata'
+        f=open(self.filename,'wb')
         pickle.dump(self.metadata,f,2)
         f.close()
 
     def saveChunk(self):
         print 'saving chunk...'
         #f=gzip.open(self.filename,'a')
-        f=open(self.filename,'a')
-        chunk={'numberOfSteps':self.chunkStepNumber,'logLikelihood':self.log_likelihood,'trace':self.trace}
-        pickle.dump(chunk,f,2)
+        df=pd.DataFrame(self.trace[:self.chunkStepNumber])
+        dfLog=pd.DataFrame(self.log_likelihood[:self.chunkStepNumber],columns=['log'])
+        dfTotal=df.join(dfLog)
+        print 'df done'
+        f=open(self.filename,'ab')
+        print 'file opened'
+
+        pickle.dump(dfTotal, f, protocol=2)
+          
         f.close()
-        self.log_likelihood=np.zeros((self.chunkSize,self.nVar))
+        print 'file closed'
+        self.log_likelihood=np.zeros(self.chunkSize)
         self.trace=np.zeros((self.chunkSize,self.nVar))
         self.chunkStepNumber=0
-
-    def setInitialConditions(self,initialCondition):
-        self.current_point=initialCondition
+        print 'chunk saved'
 
     def setSigmas(self, sigma):
         self.sigma=sigma
@@ -86,8 +92,7 @@ class MCMC(Process):
     def loop(self):
         np.random.seed()
 
-        self.metadata={'initialPoints':self.current_point,'nStep':self.nStep,'sigmas':self.sigma,'nVar':self.nVar}
-        os.system('rm -f '+self.filename)
+        self.metadata={'initialPoints':self.current_point,'nStep':self.nStep,'sigmas':self.sigma,'nVar':self.nVar,'realValues':self.realValues}
         self.saveMetaData()
 
         self.current_log_likelihood=self.logp(self.current_point)
@@ -118,6 +123,8 @@ class MCMC(Process):
             if self.chunkStepNumber >= self.chunkSize:
                 self.saveChunk()
 
+
+        print 'step number'+str(self.chunkStepNumber)
         if self.chunkStepNumber > 0: self.saveChunk()
 
 
