@@ -232,7 +232,7 @@ def main(argv):
             normalize=True
 
     print filename
-    reader = Reader1D(filename,dirname,maxChunk=theMaxChunk)
+    reader = Reader(filename,dirname,maxChunk=theMaxChunk)
     reader.setNormalize(normalize)
     reader.plot()
     #show()

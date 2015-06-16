@@ -1,6 +1,6 @@
 import cPickle as pickle
 import numpy as np
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 import os
 import gzip
 from threading import Thread
@@ -108,17 +108,16 @@ class MCMC(Process):
                 print 'current: {}'.format(self.current_point)
                 print 'proposed: {}'.format(self.proposed_point)
                 
-            if self.the_likelihood_ratio > 1:
-                self.updateStep()
-                
-            else:
-                if np.random.rand() < self.the_likelihood_ratio:
-                    self.updateStep()
-
             if self.verbose:
                 print 'current_log_likelihood: {}'.format(self.current_log_likelihood)    
                 print 'proposed_log_likelihood: {}'.format(self.proposed_log_likelihood)
                 print 'likelihood_ratio: {}'.format(self.the_likelihood_ratio)
+
+            if self.the_likelihood_ratio > 1:
+                self.updateStep()
+            else:
+                if np.random.rand() < self.the_likelihood_ratio:
+                    self.updateStep()
 
             if self.chunkStepNumber >= self.chunkSize:
                 self.saveChunk()
