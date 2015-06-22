@@ -40,33 +40,46 @@ def _test_matrix_shape(matrix, (size1, size2), name):
         
         
 class PDModel(object):
-    def __init__(self, betaBins, rgdtBins):
-        if betaBins.ndim != 1:
-            raise ValueError('Beta bins dimension should be 1')
-        if rgdtBins.ndim != 1:
-            raise ValueError('Rigidity bins dimension should be 1')
+    def __init__(self, betaBinsTheoretic = None, 
+                       betaBinsMeasured  = None, 
+                       rgdtBinsTheoretic = None,
+                       rgdtBinsMeasured  = None):
+
+        if betaBinsTheoretic is None: raise ValueError('Missing betaBinsTheoretic ')
+        if betaBinsMeasured  is None: raise ValueError('Missing betaBinsMeasured  ')
+        if rgdtBinsTheoretic is None: raise ValueError('Missing rgdtBinsTheoretic ')
+        if rgdtBinsMeasured  is None: raise ValueError('Missing rgdtBinsMeasured  ')
         
-        self.nBinsB   = betaBins.shape[0] - 1
-        self.betaBins = betaBins.copy()
-        self.betaF    = None
+        if betaBinsTheoretic.ndim != 1: raise ValueError('betaBinsTheoretic must be 1D')
+        if betaBinsMeasured .ndim != 1: raise ValueError('betaBinsMeasured  must be 1D')
+        if rgdtBinsTheoretic.ndim != 1: raise ValueError('rgdtBinsTheoretic must be 1D')
+        if rgdtBinsMeasured .ndim != 1: raise ValueError('rgdtBinsMeasured  must be 1D')
         
-        self.nBinsR   = rgdtBins.shape[0] - 1 
-        self.rgdtBins = rgdtBins.copy() 
-        self.rgdtF    = None 
+        self.nBinsBT   = betaBinsTheoretic.shape[0] - 1
+        self.betaBinsT = betaBinsTheoretic.copy()
+        self.nBinsBM   = betaBinsMeasured.shape[0] - 1
+        self.betaBinsM = betaBinsMeasured.copy()
+        self.betaF     = None
         
-        self.deltaP = np.zeros((self.nBinsB, self.nBinsR))
-        self.deltaD = np.zeros((self.nBinsB, self.nBinsR))
+        self.nBinsRT   = rgdtBinsTheoretic.shape[0] - 1 
+        self.rgdtBinsT = rgdtBinsTheoretic.copy() 
+        self.nBinsRM   = rgdtBinsMeasured.shape[0] - 1 
+        self.rgdtBinsM = rgdtBinsMeasured.copy() 
+        self.rgdtF     = None 
         
-        _delta_matrix(self.deltaP, self.betaBins, self.rgdtBins, mp)
-        _delta_matrix(self.deltaD, self.betaBins, self.rgdtBins, md)
+        self.deltaP = np.zeros((self.nBinsBT, self.nBinsRT))
+        self.deltaD = np.zeros((self.nBinsBT, self.nBinsRT))
+        
+        _delta_matrix(self.deltaPT, self.betaBinsT, self.rgdtBinsT, mp)
+        _delta_matrix(self.deltaDT, self.betaBinsT, self.rgdtBinsT, md)
         
     
     def set_rigidity_resolution(self, rgdtF):
-        _test_matrix_shape(rgdtF, 2*[self.nBinsR], 'Rigidity resolution matrix')
+        _test_matrix_shape(rgdtF, [self.nBinsRT, self.nBinsRM], 'Rigidity resolution matrix')
         self.rgdtF = rgdtF.copy()
         
     def set_beta_resolution(self, betaF):
-        _test_matrix_shape(betaF, 2*[self.nBinsB], 'Beta resolution matrix')
+        _test_matrix_shape(betaF, [self.nBinsBT, self.nBinsBM], 'Beta resolution matrix')
         self.betaF = betaF.copy()
 
 #    Exposure time not ready yet   
@@ -80,13 +93,13 @@ class PDModel(object):
         
     def __call__(self, fluxP, fluxD):
         if fluxP.ndim != 1:
-            raise ValueError('Proton flux bins dimension must be 1')
-        if fluxP.shape[0] != self.nBinsB:
-            raise ValueError('Protons flux size doesnt correspond to beta bins')
+            raise ValueError('Proton flux must be 1D')
+        if fluxP.shape[0] != self.nBinsBT:
+            raise ValueError('Proton flux size doesnt correspond to beta bins')
         if fluxD.ndim != 1:
-            raise ValueError('Deuteron flux bins dimension must be 1')
-        if fluxD.shape[0] != self.nBinsB:
-            raise ValueError('Deuterons flux size doesnt correspond to beta bins')
+            raise ValueError('Deuteron flux must be 1D')
+        if fluxD.shape[0] != self.nBinsBT:
+            raise ValueError('Deuteron flux size doesnt correspond to beta bins')
        
         # Making 2D(beta,R)
         fluxP = self.deltaP * fluxP[:,np.newaxis]
