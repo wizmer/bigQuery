@@ -1,6 +1,6 @@
 import numpy as np
 
-__all__ = ["PDModel", "mp", "md"]
+__all__ = ["PDModel", "mp", "md", "R_from_beta", "beta_from_R"]
 
 # Masses
 mp = 0.9382
@@ -70,8 +70,8 @@ class PDModel(object):
         self.deltaP = np.zeros((self.nBinsBT, self.nBinsRT))
         self.deltaD = np.zeros((self.nBinsBT, self.nBinsRT))
         
-        _delta_matrix(self.deltaPT, self.betaBinsT, self.rgdtBinsT, mp)
-        _delta_matrix(self.deltaDT, self.betaBinsT, self.rgdtBinsT, md)
+        _delta_matrix(self.deltaP, self.betaBinsT, self.rgdtBinsT, mp)
+        _delta_matrix(self.deltaD, self.betaBinsT, self.rgdtBinsT, md)
         
     
     def set_rigidity_resolution(self, rgdtF):
