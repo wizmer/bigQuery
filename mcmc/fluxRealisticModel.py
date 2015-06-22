@@ -1,6 +1,7 @@
 import MCMC
 from pd_model import *
 import pandas as pd
+import numpy as np
 
 if __name__ == "__main__":
     
@@ -32,7 +33,7 @@ if __name__ == "__main__":
         if (value < 0).any(): return -np.inf
         
         # value must be and array twice the size of binning 
-        expected = model(*value.reshape((2,len(betaTheoretc)-1)))
+        expected = model(*value.reshape((2,len(betaTheoretic)-1)))
         log = (observed * np.log(expected) - expected).sum()
 
         # Didn't figure that out yet
