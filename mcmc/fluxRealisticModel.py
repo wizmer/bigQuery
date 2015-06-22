@@ -2,37 +2,37 @@ import MCMC
 from pd_model import *
 import pandas as pd
 
-def get_matrix(filename, bins):
-    rres = pd.DataFrame.from_csv(filename)
-    rres = rres.divide( rres.sum(axis=1), axis=0)
-    rres.columns = bins
-    rres.index = list(rres.index[:-1]) + [bins[-1]]
-    rres.index = rres.index.astype(float)
-    rres = rres.reindex(bins).fillna(0.0)
-    return rres.values[:-1,:-1]
-
-
 if __name__ == "__main__":
+    
+    frame = pd.DataFrame.from_csv("datasets/R_resolution.csv")
+    frame = frame.divide(frame.sum(axis=1),axis=0)
+    rgdtMeasured  = np.array(frame.columns.astype(float))
+    rgdtTheoretic = np.array(frame.index.astype(float))
+    rgdtF = frame.values[:-1,:-1]
+
+    frame = pd.DataFrame.from_csv("datasets/B_resolution.csv")
+    frame = frame.divide(frame.sum(axis=1),axis=0)
+    betaMeasured  = np.array(frame.columns.astype(float))
+    betaTheoretic = np.array(frame.index.astype(float))
+    betaF = frame.values[:-1,:-1]
    
-    rgdtBins = np.logspace(-5.0 / 19, 1, 13)
-    betaBins = rgdtBins/np.sqrt(rgdtBins**2 + mp**2)
-
-    model = PDModel(betaBins, rgdtBins)
-
-    rgdtF = get_matrix("R_resolution.csv", rgdtBins)
+    model = PDModel(
+        betaBinsTheoretic=betaTheoretic,
+        betaBinsMeasured=betaMeasured ,
+        rgdtBinsTheoretic=rgdtTheoretic, 
+        rgdtBinsMeasured=rgdtMeasured 
+    )
     model.set_rigidity_resolution(rgdtF)
-    
-    betaF = get_matrix("B_resolution.csv", betaBins)
     model.set_beta_resolution(betaF)
-    
-    observed = np.loadtxt("observed_mock.txt")
+
+    observed = np.loadtxt("datasets/observed_mock_equal.txt")
 
     def logp(value):
         value = np.array(value)
         if (value < 0).any(): return -np.inf
         
         # value must be and array twice the size of binning 
-        expected = model(*value.reshape((2,len(betaBins)-1)))
+        expected = model(*value.reshape((2,len(betaTheoretc)-1)))
         log = (observed * np.log(expected) - expected).sum()
 
         # Didn't figure that out yet
@@ -42,4 +42,12 @@ if __name__ == "__main__":
         
         return log #+ smoothness
    
+    flux = 1 + np.zeros_like(betaTheoretic)[:-1]
+    flux = np.concatenate([flux,flux])
     
+    mcmc = MCMC.MCMC("testtest", flux[:], flux[:]) 
+    mcmc.setLogLikelihoodFunction(logp)
+    mcmc.setSteps(10000) 
+
+    mcmc.start()
+    mcmc.join()
