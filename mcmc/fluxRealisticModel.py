@@ -1,10 +1,37 @@
+import time
 import MCMC
 from pd_model import *
 import pandas as pd
 import numpy as np
+import sys
+import getopt
 
-if __name__ == "__main__":
+def main(argv):
+    t0=time.time()
+    filename='test.pkl'
+    nStep=10000
+    nThreads=1
+    dirname='./'
+    matrix=''
+    alpha=0
     
+    try:
+        opts, args = getopt.getopt(argv,"f:n:t:a:d:m:")
+    except getopt.GetoptError:
+        print 'test.py -i <inputfile> -o <outputfile>'
+        sys.exit(2)
+    for opt, arg in opts:
+        if opt == '-f':
+            filename=arg
+        elif opt == '-n':
+            nStep=int(arg)
+        elif opt == '-t':
+            nThreads=int(arg)
+        elif opt == '-a':
+            alpha=float(arg)
+        elif opt == '-d':
+            dirname=arg
+
     frame = pd.DataFrame.from_csv("datasets/R_resolution.csv")
     frame = frame.divide(frame.sum(axis=1),axis=0)
     rgdtMeasured  = np.array(frame.columns.astype(float))
@@ -16,13 +43,14 @@ if __name__ == "__main__":
     betaMeasured  = np.array(frame.columns.astype(float))
     betaTheoretic = np.array(frame.index.astype(float))
     betaF = frame.values[:-1,:-1]
-   
+
     model = PDModel(
         betaBinsTheoretic=betaTheoretic,
         betaBinsMeasured=betaMeasured ,
         rgdtBinsTheoretic=rgdtTheoretic, 
         rgdtBinsMeasured=rgdtMeasured 
-    )
+        )
+    
     model.set_rigidity_resolution(rgdtF)
     model.set_beta_resolution(betaF)
 
@@ -31,24 +59,55 @@ if __name__ == "__main__":
     def logp(value):
         value = np.array(value)
         if (value < 0).any(): return -np.inf
-        
+
         # value must be and array twice the size of binning 
         expected = model(*value.reshape((2,len(betaTheoretic)-1)))
         log = (observed * np.log(expected) - expected).sum()
-
         # Didn't figure that out yet
         #firstDerivative = np.diff(np.log(value))
         #secondDerivative = np.fabs(np.diff(firstDerivative))
         #smoothness = -(alpha * secondDerivative).sum()
-        
         return log #+ smoothness
-   
+
     flux = 1 + np.zeros_like(betaTheoretic)[:-1]
     flux = np.concatenate([flux,flux])
-    
-    mcmc = MCMC.MCMC("testtest", flux[:], flux[:]) 
-    mcmc.setLogLikelihoodFunction(logp)
-    mcmc.setSteps(10000) 
 
-    mcmc.start()
-    mcmc.join()
+    sigma=0.01
+    def proposal_function(previous_point):
+        point=np.zeros(len(flux))
+            #return previous_point+self.sigma*np.random.standard_normal(self.nVar)
+        for i in range(len(flux)):
+            while True:
+                val=previous_point[i]+0.01*np.random.standard_normal()
+                if val > 0:
+                    point[i]=val
+                    break
+        return point
+
+    filename='alpha{}_'.format(alpha)+filename
+    
+    threads=[]
+
+    for i in range(nThreads):
+        theFileName=dirname+'/thread{}_'.format(i)+filename
+        a=MCMC.MCMC(theFileName,initialCondition=flux[:],realValues=flux[:])
+        a.setProposalFunction(proposal_function)
+        a.setLogLikelihoodFunction(logp)
+        a.setSteps(nStep)
+        threads.append(a)
+
+    for t in threads:
+        print 'launching thread'
+        t.start()
+        time.sleep(1)
+
+    for t in threads:
+        t.join()
+        
+    print 'done'
+    print 'time : {}'.format(time.time()-t0)
+
+if __name__ == "__main__":
+    main(sys.argv[1:])
+
+
