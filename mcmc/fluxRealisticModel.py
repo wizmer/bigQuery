@@ -6,6 +6,39 @@ import numpy as np
 import sys
 import getopt
 
+def load_model(filenameR, filenameB):
+    frame = pd.DataFrame.from_csv(filenameR)
+    frame = frame.divide(frame.sum(axis=1),axis=0)
+    rgdtMeasured  = np.array(frame.columns.astype(float))
+    rgdtTheoretic = np.array(frame.index.astype(float))
+    rgdtF = frame.values[:-1,:-1]
+    
+    frame = pd.DataFrame.from_csv(filenameB)
+    frame = frame.divide(frame.sum(axis=1),axis=0)
+    betaMeasured  = np.array(frame.columns.astype(float))
+    betaTheoretic = np.array(frame.index.astype(float))
+    betaF = frame.values[:-1,:-1]
+
+    model = PDModel(
+        betaBinsTheoretic=betaTheoretic,
+        betaBinsMeasured=betaMeasured ,
+        rgdtBinsTheoretic=rgdtTheoretic, 
+        rgdtBinsMeasured=rgdtMeasured 
+        )
+    
+    model.set_rigidity_resolution(rgdtF)
+    model.set_beta_resolution(betaF)
+    return model
+
+def make_mock_observation(fluxP, fluxD, write_file=None):
+    model = load_model("datasets/R_resolution.csv", "datasets/B_resolution.csv")
+    r = model(fluxP,fluxD)
+    
+    if not write_file is None:
+        np.savetxt(write_file,r)
+    
+    return r
+
 def main(argv):
     t0=time.time()
     filename='test.pkl'
@@ -32,36 +65,23 @@ def main(argv):
         elif opt == '-d':
             dirname=arg
 
-    frame = pd.DataFrame.from_csv("datasets/R_resolution.csv")
-    frame = frame.divide(frame.sum(axis=1),axis=0)
-    rgdtMeasured  = np.array(frame.columns.astype(float))
-    rgdtTheoretic = np.array(frame.index.astype(float))
-    rgdtF = frame.values[:-1,:-1]
+   
+    model = load_model("datasets/R_resolution.csv", "datasets/B_resolution.csv")
 
-    frame = pd.DataFrame.from_csv("datasets/B_resolution.csv")
-    frame = frame.divide(frame.sum(axis=1),axis=0)
-    betaMeasured  = np.array(frame.columns.astype(float))
-    betaTheoretic = np.array(frame.index.astype(float))
-    betaF = frame.values[:-1,:-1]
+    #observed = np.loadtxt("datasets/observed_mock_equal.txt")
 
-    model = PDModel(
-        betaBinsTheoretic=betaTheoretic,
-        betaBinsMeasured=betaMeasured ,
-        rgdtBinsTheoretic=rgdtTheoretic, 
-        rgdtBinsMeasured=rgdtMeasured 
-        )
-    
-    model.set_rigidity_resolution(rgdtF)
-    model.set_beta_resolution(betaF)
+    fluxD = 100 + np.zeros(model.nBinsBT)
+    fluxP = 100 + np.zeros(model.nBinsBT)
+    flux = np.concatenate([fluxP,fluxD])
 
-    observed = np.loadtxt("datasets/observed_mock_equal.txt")
+    observed = make_mock_observation(fluxP, fluxD)
 
     def logp(value):
         value = np.array(value)
         if (value < 0).any(): return -np.inf
 
         # value must be and array twice the size of binning 
-        expected = model(*value.reshape((2,len(betaTheoretic)-1)))
+        expected = model(*value.reshape((2,model.nBinsBT)))
         log = (observed * np.log(expected) - expected).sum()
         # Didn't figure that out yet
         #firstDerivative = np.diff(np.log(value))
@@ -69,14 +89,11 @@ def main(argv):
         #smoothness = -(alpha * secondDerivative).sum()
         return log #+ smoothness
 
-    flux = 1 + np.zeros_like(betaTheoretic)[:-1]
-    flux = np.concatenate([flux,flux])
-
-    sigma=0.01
+    sigma=1
     def proposal_function(previous_point):
-        point=np.zeros(len(flux))
+        point=np.zeros(len(previous_point))
             #return previous_point+self.sigma*np.random.standard_normal(self.nVar)
-        for i in range(len(flux)):
+        for i in range(len(previous_point)):
             while True:
                 val=previous_point[i]+0.01*np.random.standard_normal()
                 if val > 0:
