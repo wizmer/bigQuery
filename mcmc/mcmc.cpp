@@ -12,7 +12,8 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-std::vector< float > gInitialCondition;
+#include "generalUtils.hpp"
+
 std::default_random_engine generator;
 std::normal_distribution<float> normalDistrib; // a random gaussian generator
 
@@ -41,6 +42,8 @@ public:
         current_point    = new float[nVar];
         initialCondition = new float[nVar];
         log_likelihood   = new float[chunkSize];
+        data             = new float[nVar];
+        sigma            = new float[nVar];
         trace            = new float*[nVar];
 
         for(int i = 0;i<nVar;i++){
@@ -48,14 +51,13 @@ public:
             initialCondition[i] = _initialCondition[i];
             current_point[i] = initialCondition[i];
             realValues[i] = _realValue[i];
+            data[i] = _realValue[i];
+            sigma[i] = sqrt( _initialCondition[i] );
 	}
-
 
         // construct a trivial random generator engine from a time-based seed:
         unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
         generator.seed(seed);
-
-        // logp = defaultLogP;
     }
 
 
@@ -84,6 +86,7 @@ private:
     float *initialCondition;
     float **trace; // the chain containing the log likelihood of all accepted points
     float *log_likelihood; // the chain containing the log likelihood of all accepted points
+    float *data;
 
     // float (*logp)(float*);
     LogP logP;
@@ -148,11 +151,6 @@ private:
 	}
     }
 
-    // void setLogLikelihoodFunction( float (*f)(float*) ){
-    //     logp = f;
-    // }
-
-
     void setVerbose(bool isVerbose){
         verbose = isVerbose;
     }
@@ -186,13 +184,13 @@ private:
 
         saveMetaData();
 
-        current_log_likelihood = LogP::getValue(initialCondition);
+        current_log_likelihood = LogP::getValue(initialCondition, data, nVar);
 
         for( int i = 0; i<nStep; i++){
             float proposed_point[nVar];
             if( i%400000 == 0) printf("%i/%i : %i%%\n",i, nStep, int(float(i)/float(nStep)*100));
-            ProposalFunction::proposePoint(current_point, proposed_point);
-            float proposed_log_likelihood = LogP::getValue(proposed_point);
+            ProposalFunction::proposePoint(current_point, proposed_point, nVar, sigma);
+            float proposed_log_likelihood = LogP::getValue(proposed_point, data, nVar);
             float the_likelihood_ratio = exp(proposed_log_likelihood-current_log_likelihood);
 
             if( verbose ){
@@ -220,43 +218,56 @@ private:
 };
 
 
-template <int nVar> struct DefaultProposalFunction{
-    static void proposePoint(float *previous_point, float* proposed_point){
-        double sigma = 1;
+ struct DefaultProposalFunction{
+     static void proposePoint(float *previous_point, float* proposed_point, const int &nVar, float* sigma){
         for(int i = 0;i<nVar;i++){
-            proposed_point[i] = previous_point[i] + sigma * normalDistrib(generator);
+            proposed_point[i] = previous_point[i] + sigma[i] * normalDistrib(generator);
         }
     }
 };
 
-template < int nVar > struct DefaultLogP{
-    static float getValue(float *point){
+struct DefaultLogP{
+    static float getValue(float *point, float* data, const int &nVar){
         float log = 0;
         for( int i = 0; i<nVar;i++){
-            log+= -pow((point[i]-gInitialCondition[i])/sqrt(gInitialCondition[i]),2);
+            log+= -pow((point[i]-data[i])/sqrt(data[i]),2);
         }
         return log;
     }
 };
 
+
 int main(int argc, char** argv){
-    std::clock_t start = std::clock();
-    gInitialCondition.push_back(1000);
-    gInitialCondition.push_back(100);
-    gInitialCondition.push_back(30);
-    gInitialCondition.push_back(1);    
-
+    int c;
+    int nStep = 0;
     std::string name = "test";
-    if( argc > 1 ) name = argv[1];
 
-    #define NVAR 4
-    
-    MCMC<DefaultLogP<NVAR>, DefaultProposalFunction<NVAR> > a(gInitialCondition, name, gInitialCondition);
-    a.setSteps(100000);
+    while((c =  getopt(argc, argv, "n:f:")) != EOF)
+        {
+            switch (c)
+                {
+                case 'n':
+                    nStep = generalUtils::stringTo<int>(optarg);
+                    break;
+                case 'f':
+                    name = optarg;
+                    break;
+                }
+        }
+
+    std::clock_t start = std::clock();
+
+    int nVar = 62;
+    std::vector< float > initialCondition;
+    for(int i = 0;i<nVar;i++){
+        initialCondition.push_back( 1e6*pow(i+1,-2) );
+    }
+
+    MCMC<DefaultLogP, DefaultProposalFunction > a(initialCondition, name, initialCondition);
+    if( nStep > 0 ) a.setSteps(nStep);
     a.run();
     std::cout << "sizeof(a) : " << sizeof(a) << std::endl;
     std::cout << "Time : " << (std::clock() - start) / (float)(CLOCKS_PER_SEC / 1000) << " ms" << std::endl;
     return 0;
 }
-
 
