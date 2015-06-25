@@ -8,7 +8,7 @@ import sys
 import getopt
 
 class Reader:
-    verbose = False
+    verbose = True
     
     def __init__(self,filename,dirname='./',maxChunk=0):
         print 'maxchunk : '+str(maxChunk)
@@ -32,6 +32,7 @@ class Reader:
         self.bins=np.zeros((self.metadata['nVar'],101))
         self.firstHisto=True
         self.chunkNumber=0
+        self.maxPlotPerCanvas=6
 
         self.t0=time.clock()
         # self.array=[0]*self.metadata['nVar']
@@ -40,6 +41,9 @@ class Reader:
 
     def setNormalize(self,normalize):
         self.normalize=normalize
+        
+    def setMaxPlotPerCanvas(self,maxPlotPerCanvas):
+        self.maxPlotPerCanvas=maxPlotPerCanvas
 
     def loadAll(self):
         self.load1D()
@@ -57,6 +61,7 @@ class Reader:
         else:
             if self.verbose: print 'not first'
             for iVar in range(self.metadata['nVar']):
+                print '1D var #'+str(iVar)
                 counts, b = np.histogram(self.df[iVar],bins=self.bins[iVar])
                 self.totalCount[iVar]+=counts
                 if iVar == 0:
@@ -67,7 +72,10 @@ class Reader:
         if self.verbose: print self.firstHisto
         if self.firstHisto:
             for iVar in range(self.metadata['nVar']):
+                if iVar > 5: break
                 for jVar in range(self.metadata['nVar']):
+                    if iVar == jVar: continue
+                    if abs(iVar - jVar) > 1: continue
                     if self.verbose: print '2d plots: {},{}'.format(iVar,jVar)
                     self.heatmap[iVar][jVar], xedges, yedges = np.histogram2d(self.df[iVar],self.df[jVar],bins=100)
                     self.extent[iVar][jVar] = [xedges[0], xedges[-1], yedges[0], yedges[-1]]
@@ -76,6 +84,7 @@ class Reader:
             if self.verbose: print 'size : {}'.format(self.metadata['nVar'])
             for iVar in range(self.metadata['nVar']):
                 for jVar in range(self.metadata['nVar']):
+                    if abs(iVar - jVar) > 2: continue
                     if self.verbose: print '2d plots: {},{}, nentries: {}'.format(iVar,jVar,size)
                     h, xedges, yedges = np.histogram2d(self.df[iVar],self.df[jVar],bins=100,range=[[self.extent[iVar][jVar][0],self.extent[iVar][jVar][1]],[self.extent[iVar][jVar][2],self.extent[iVar][jVar][3]]])
                     self.heatmap[iVar][jVar]+=h
@@ -126,27 +135,38 @@ class Reader:
                 # remainingBurnInLength-=self.chunk['numberOfSteps']
                 # if remainingBurnInLength < 0: remainingBurnInLength=0
             f.close()
-            
+
     def plot(self):
         print time.clock()-self.t0
         print 'plotting'
-        plt.figure('Correlation plots',figsize=(15,20))
-        for iVar in range(self.metadata['nVar']):
-            print 'iVar: '+str(iVar)
-            for jVar in range(self.metadata['nVar']):
-                print 'jVar: '+str(jVar)
-                plotNum=iVar*self.metadata['nVar']+jVar+1
-                plt.subplot(self.metadata['nVar'],self.metadata['nVar'],plotNum)
-                if iVar==jVar:
-                    plt.plot(self.bins[iVar][:-1],self.totalCount[iVar],drawstyle='steps',label=self.filename)
-                    if len(self.metadata['realValues']) > 0:
-                        plt.axvline(self.metadata['realValues'][iVar])
-                elif iVar>jVar:
-                    plt.imshow(self.heatmap[jVar][iVar], extent=self.extent[jVar][iVar],aspect="auto")
-                    plt.title('titre {},{}'.format(iVar,jVar))
+        nPlotPerCanvas=min(self.maxPlotPerCanvas, self.metadata['nVar'])
+
+        for iCan in range(self.metadata['nVar']/nPlotPerCanvas+1*(self.metadata['nVar']%nPlotPerCanvas != 0)):
+            if iCan > 0: break
+            plt.figure('2D plots #'+str(iCan),figsize=(100,200))
+            #plt.figure('Correlation plots',figsize=(100,100))
+            for iPlot in range(nPlotPerCanvas):
+                iVar=iPlot+iCan*nPlotPerCanvas
+
+                print 'iVar: '+str(iVar)
+                for jPlot in range(nPlotPerCanvas):
+                    jVar=jPlot+iCan*nPlotPerCanvas
+                    print 'jVar: '+str(jVar)
+                    plotNum=iPlot*nPlotPerCanvas+jPlot+1
+                    if iVar >= jVar : plt.subplot(nPlotPerCanvas,nPlotPerCanvas,plotNum)
+                    if iVar==jVar:
+                        plt.plot(self.bins[iVar][:-1],self.totalCount[iVar],drawstyle='steps',label=self.filename)
+                        if len(self.metadata['realValues']) > 0:
+                            plt.axvline(self.metadata['realValues'][iVar])
+                    elif iVar==1+jVar:
+                        print 'imshowing {} {}'.format(iVar,jVar)
+                        print self.heatmap[jVar][iVar]
+                        plt.imshow(self.heatmap[jVar][iVar], extent=self.extent[jVar][iVar],aspect="auto")
+                        plt.title('titre {},{}'.format(iVar,jVar))
 
         plt.savefig(self.filename+'.png')
         plt.savefig(self.filename+'.eps')
+        print 'plotting done !'
 
 
 
@@ -169,14 +189,19 @@ class Tracer(Reader):
         pass
 
     def plot(self):
-        plt.figure('Traces',figsize=(15,20))
-        for iVar in range(self.metadata['nVar']):
-            plt.subplot(self.metadata['nVar'],1,iVar+1)
-            plt.plot(self.df[iVar][:self.traceLength])
-            plt.xlabel('Step number')
-            plt.ylabel('Param. value')
-        
+        nPlotPerCanvas=min(self.maxPlotPerCanvas, self.metadata['nVar'])
+        for iCan in range(self.metadata['nVar']/nPlotPerCanvas+1*(self.metadata['nVar']%nPlotPerCanvas != 0)):
+            plt.figure('Traces #'+str(iCan),figsize=(20,200))
 
+            for iPlot in range(nPlotPerCanvas):
+                print iCan
+                iVar=iPlot+iCan*nPlotPerCanvas
+                if iVar >= self.metadata['nVar']: break
+                plt.subplot(nPlotPerCanvas,1,iPlot+1,title='Param #'+str(iVar))
+                plt.plot(self.df[iVar][:self.traceLength])
+                plt.xlabel('Step number')
+                plt.ylabel('Param. value')
+        
 class Reader1D(Reader):
     def loadAll(self):
         print 'loading all'
@@ -185,24 +210,32 @@ class Reader1D(Reader):
     def plot(self):
         print time.clock()-self.t0
         print 'plotting'
-        plt.figure('1D plots')
         f=open(self.filename+'.pkl','w')
         pickle.dump(self.metadata,f)
+        nPlotPerCanvas=min(self.maxPlotPerCanvas, self.metadata['nVar'])
+
         histos=[]
-        for iVar in range(self.metadata['nVar']):
-            if self.normalize: self.totalCount[iVar]/=np.amax(self.totalCount[iVar])
-            print 'iVar: '+str(iVar)
-            plt.subplot(self.metadata['nVar'],1,iVar+1)
-            h=histo1D(self.metadata,self.bins[iVar],self.totalCount[iVar])
-            histos.append(h)
-            plt.plot(self.bins[iVar][:-1],self.totalCount[iVar],drawstyle='steps',label=self.filename)
-            if len(self.metadata['realValues']) > 0:
-                plt.axvline(self.metadata['realValues'][iVar])
-                
+        for iCan in range(self.metadata['nVar']/nPlotPerCanvas+1*(self.metadata['nVar']%nPlotPerCanvas != 0)):
+            plt.figure('1D plots #'+str(iCan),figsize=(20,200))
+
+            for iPlot in range(nPlotPerCanvas):
+                print iCan
+                iVar=iPlot+iCan*nPlotPerCanvas
+                if iVar >= self.metadata['nVar']: break
+                if self.normalize: self.totalCount[iVar]/=np.amax(self.totalCount[iVar])
+                print 'iVar: '+str(iVar)
+                plt.subplot(nPlotPerCanvas,1,iPlot+1,title='Param #'+str(iVar))
+                h=histo1D(self.metadata,self.bins[iVar],self.totalCount[iVar])
+                histos.append(h)
+                plt.plot(self.bins[iVar][:-1],self.totalCount[iVar],drawstyle='steps',label=self.filename)
+                if len(self.metadata['realValues']) > 0:
+                    plt.axvline(self.metadata['realValues'][iVar])
+
         pickle.dump(histos,f,2)
 
         plt.savefig(self.filename+'.png')
         plt.savefig(self.filename+'.eps')
+        print 'plotting done !'
 
 def main(argv):
     filename='test.pkl'

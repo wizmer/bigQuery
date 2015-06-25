@@ -70,8 +70,9 @@ def main(argv):
 
     #observed = np.loadtxt("datasets/observed_mock_equal.txt")
 
-    fluxD = 100 + np.zeros(model.nBinsBT)
-    fluxP = 100 + np.zeros(model.nBinsBT)
+    fluxD = 100 + np.array([2*i for i in range(model.nBinsBT)])
+    fluxP = 100 + np.array([2*i for i in range(model.nBinsBT)])
+    # fluxP = 100 + np.zeros(model.nBinsBT)
     flux = np.concatenate([fluxP,fluxD])
 
     observed = make_mock_observation(fluxP, fluxD)
@@ -89,7 +90,7 @@ def main(argv):
         #smoothness = -(alpha * secondDerivative).sum()
         return log #+ smoothness
 
-    sigma=1
+    sigma=5
     def proposal_function(previous_point):
         point=np.zeros(len(previous_point))
             #return previous_point+self.sigma*np.random.standard_normal(self.nVar)

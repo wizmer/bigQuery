@@ -6,20 +6,21 @@
 #include <chrono>
 #include <math.h>
 #include <cstring>
+#include <vector>
 
+#include <unistd.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 
-class MCMC;
+std::vector< float > gInitialCondition;
+std::default_random_engine generator;
+std::normal_distribution<float> normalDistrib; // a random gaussian generator
 
-MCMC* gMCMC;
-
-void defaultProposalFunction(float *previous_point, float* proposed_point);
-float defaultLogP(float *point);
-    
-class MCMC{
+template <class LogP, class ProposalFunction > class MCMC{
 public:
-    MCMC(std::vector<float> _initialCondition, std::string name = "mcmc.mcmc"){
+    MCMC(std::vector<float> _initialCondition, std::string name = "mcmc.mcmc", std::vector<float> _realValue = std::vector<float>() ){
+
+        
         filename = name;
 
         if( mkdir(filename.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH) != 0){
@@ -32,55 +33,34 @@ public:
         chunkStepNumber = 0;
         nVar = _initialCondition.size();
         nStep=100;
+        nThreads = 1;
+
+        chunkSize = maxRAM / ( (nVar+1)*sizeof(float)) / nThreads;
 
         realValues       = new float[nVar];
         current_point    = new float[nVar];
         initialCondition = new float[nVar];
-        sigma            = new float[nVar];
         log_likelihood   = new float[chunkSize];
-
         trace            = new float*[nVar];
 
         for(int i = 0;i<nVar;i++){
             trace[i] = new float[chunkSize];
             initialCondition[i] = _initialCondition[i];
             current_point[i] = initialCondition[i];
-            sigma[i] = 1;
+            realValues[i] = _realValue[i];
 	}
 
-        nThreads = 1;
-        chunkSize = maxRAM / ( (nVar+1)*sizeof(float)) / nThreads;
-
-        std::cout << "chunkSize : " << chunkSize << std::endl;
-        std::cout << "maxRAM : " << maxRAM << std::endl;
-        std::cout << "nVar : " << nVar << std::endl;
-        std::cout << "sizeof(float) : " << sizeof(float) << std::endl;
 
         // construct a trivial random generator engine from a time-based seed:
         unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
         generator.seed(seed);
 
-        gMCMC = this;
-        proposalFunction = defaultProposalFunction;
-        logp = defaultLogP;
+        // logp = defaultLogP;
     }
 
-    void defaultProposalMethod(float *previous_point, float* proposed_point){
-        for(int i = 0;i<nVar;i++){
-            proposed_point[i] = previous_point[i] + sigma[i] * normalDistrib(generator);
-        }
-    }
 
     void run(){
         loop();
-    }
-
-    float default_logp_method(float *point){
-        float log = 0;
-        for( int i = 0; i<nVar;i++){
-            log+= -pow((point[i]-initialCondition[i])/sqrt(initialCondition[i]),2);
-        }
-        return log;
     }
 
     void setSteps(int _nSteps){
@@ -105,16 +85,14 @@ private:
     float **trace; // the chain containing the log likelihood of all accepted points
     float *log_likelihood; // the chain containing the log likelihood of all accepted points
 
-    float (*logp)(float*);
-    void (*proposalFunction)(float*,float*);
+    // float (*logp)(float*);
+    LogP logP;
+    ProposalFunction proposalFunction;
 
     int chunkStepNumber;
     int seed;
     int nThreads;
-    int maxRAM = 2e9;
-    std::default_random_engine generator;
-    std::normal_distribution<float> normalDistrib; // a random gaussian generator
-    
+    static const int maxRAM = 2e9;
 
     void resetChains(){
         for(int i = 0;i<nVar;i++){
@@ -125,7 +103,15 @@ private:
     }
 
     void saveMetaData(){
-
+        std::ofstream myfile( filename+"/metadata.txt", std::ios::out);
+        myfile << "nStep " << nStep << std::endl;
+        myfile << "nVar " << nVar << std::endl;
+        myfile << "chunkSize " << chunkSize << std::endl;
+        for(int i = 0;i<nVar;i++){
+            myfile << "initialPoints_" << i << " " << initialCondition[i] << std::endl;
+            myfile << "realValues_" << i << " " << realValues[i] << std::endl;
+        }
+        myfile.close();
     }
 
     void saveChunk(){
@@ -162,13 +148,9 @@ private:
 	}
     }
 
-    void setProposalFunction( void(*f)(float*,float*)){
-        proposalFunction = f;
-    }
-
-    void setLogLikelihoodFunction( float (*f)(float*) ){
-        logp = f;
-    }
+    // void setLogLikelihoodFunction( float (*f)(float*) ){
+    //     logp = f;
+    // }
 
 
     void setVerbose(bool isVerbose){
@@ -194,16 +176,23 @@ private:
     }
 
     void loop(){
-        // self.metadata={'initialPoints':self.current_point,'nStep':self.nStep,'sigmas':self.sigma,'nVar':self.nVar,'realValues':self.realValues}
+        std::cout << "nStep : " << nStep/1e6 << " millions" << std::endl;
+        std::cout << "chunkSize : " << chunkSize/1e6 << " MBytes" << std::endl;
+        std::cout << "maxRAM : " << maxRAM/1e6 << " MBytes" << std::endl;
+        std::cout << "nVar : " << nVar << std::endl;
+        std::cout << "sizeof(float) : " << sizeof(float) << std::endl;
+
+        sleep(1);
+
         saveMetaData();
 
-        current_log_likelihood = logp(initialCondition);
+        current_log_likelihood = LogP::getValue(initialCondition);
 
         for( int i = 0; i<nStep; i++){
             float proposed_point[nVar];
-            //if( i%100000 == 0) printf("%i/%i : %i%%\n",i, nStep, int(float(i)/float(nStep)*100));
-            proposalFunction(current_point, proposed_point);
-            float proposed_log_likelihood = logp(proposed_point);
+            if( i%400000 == 0) printf("%i/%i : %i%%\n",i, nStep, int(float(i)/float(nStep)*100));
+            ProposalFunction::proposePoint(current_point, proposed_point);
+            float proposed_log_likelihood = LogP::getValue(proposed_point);
             float the_likelihood_ratio = exp(proposed_log_likelihood-current_log_likelihood);
 
             if( verbose ){
@@ -230,27 +219,44 @@ private:
     }
 };
 
-void defaultProposalFunction(float *previous_point, float* proposed_point){
-    gMCMC -> defaultProposalMethod( previous_point, proposed_point );
-}
 
-float defaultLogP(float *point){
-    gMCMC -> default_logp_method(point);
-}
+template <int nVar> struct DefaultProposalFunction{
+    static void proposePoint(float *previous_point, float* proposed_point){
+        double sigma = 1;
+        for(int i = 0;i<nVar;i++){
+            proposed_point[i] = previous_point[i] + sigma * normalDistrib(generator);
+        }
+    }
+};
 
+template < int nVar > struct DefaultLogP{
+    static float getValue(float *point){
+        float log = 0;
+        for( int i = 0; i<nVar;i++){
+            log+= -pow((point[i]-gInitialCondition[i])/sqrt(gInitialCondition[i]),2);
+        }
+        return log;
+    }
+};
 
 int main(int argc, char** argv){
-    std::vector< float > v;
-    v.push_back(1000);
-    v.push_back(100);
-    v.push_back(30);    
+    std::clock_t start = std::clock();
+    gInitialCondition.push_back(1000);
+    gInitialCondition.push_back(100);
+    gInitialCondition.push_back(30);
+    gInitialCondition.push_back(1);    
 
     std::string name = "test";
     if( argc > 1 ) name = argv[1];
-    MCMC a(v, name);
-    a.setSteps(100000000000);
+
+    #define NVAR 4
+    
+    MCMC<DefaultLogP<NVAR>, DefaultProposalFunction<NVAR> > a(gInitialCondition, name, gInitialCondition);
+    a.setSteps(100000);
     a.run();
     std::cout << "sizeof(a) : " << sizeof(a) << std::endl;
+    std::cout << "Time : " << (std::clock() - start) / (float)(CLOCKS_PER_SEC / 1000) << " ms" << std::endl;
     return 0;
 }
+
 

@@ -112,7 +112,7 @@ def main(argv):
             # print cov
             df=pd.read_csv('cov.txt')
             col=list(df)
-            col.remove('Unnamed: 0')
+            col.remove(col[-1] )
             offset=2
             cov=df[col].transpose().as_matrix()[offset:n+offset,offset:n+offset]
 

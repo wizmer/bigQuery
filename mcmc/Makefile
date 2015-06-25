@@ -1,8 +1,14 @@
-LIBS=-L/usr/lib/x86_64-linux-gnu -lCore -lCint -lRIO -lNet -lHist -lGraf -lGpad -lTree -lRint -lMatrix -lMathCore
+all: read mcmc
 
-
-all:
-	g++ -g mcmc.cpp -o main -std=c++11
+INCLUDE=-I${HOME}/utils/include
+AMSSTATICLIBS := -L$(AMSWD)/lib/linuxx8664gcc5.34 -lntuple_slc6_PG
+LIBS=`root-config --cflags --libs ` -L${HOME}/utils/lib -lRootUtils 
+mcmc:
+	g++ -g ${INCLUDE} mcmc.cpp -o main -std=c++11
 
 read:
-	g++ -g `root-config --cflags ` read.cpp -o read ${LIBS}  
+	g++ -g ${INCLUDE} reader.cpp -o reader  ${LIBS} $(AMSSTATICLIBS)
+
+clean:
+	rm -f main reader
+
