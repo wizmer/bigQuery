@@ -9,6 +9,10 @@ mcmc:
 read:
 	g++ -g ${INCLUDE} reader.cpp -o reader  ${LIBS} $(AMSSTATICLIBS)
 
+pd_model.o: pd_model.cpp  pd_model.hpp
+	g++ -c pd_model.cpp -std=c++11 
+
+
 clean:
 	rm -f main reader
 
