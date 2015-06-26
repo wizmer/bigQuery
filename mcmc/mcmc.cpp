@@ -12,15 +12,15 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-std::vector< float > gInitialCondition;
+#include "generalUtils.hpp"
+#include "pd_model.hpp"
+
 std::default_random_engine generator;
 std::normal_distribution<float> normalDistrib; // a random gaussian generator
 
-template <class LogP, class ProposalFunction > class MCMC{
+template <class Model, class ProposalFunction > class MCMC{
 public:
-    MCMC(std::vector<float> _initialCondition, std::string name = "mcmc.mcmc", std::vector<float> _realValue = std::vector<float>() ){
-
-        
+    MCMC(std::string name = "mcmc.mcmc" ){
         filename = name;
 
         if( mkdir(filename.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH) != 0){
@@ -28,36 +28,32 @@ public:
             exit(-1);
         }
         
-        verbose = false;
+        verbose = true;
 
         chunkStepNumber = 0;
-        nVar = _initialCondition.size();
+        initialConditions = model.initialConditions;
+
+        nVar = initialConditions.size();
         nStep=100;
         nThreads = 1;
 
         chunkSize = maxRAM / ( (nVar+1)*sizeof(float)) / nThreads;
 
-        realValues       = new float[nVar];
-        current_point    = new float[nVar];
-        initialCondition = new float[nVar];
-        log_likelihood   = new float[chunkSize];
-        trace            = new float*[nVar];
+
+        current_point = initialConditions;
+        realValues = model.realValues;
+
+        log_likelihood.reserve(chunkSize);
 
         for(int i = 0;i<nVar;i++){
-            trace[i] = new float[chunkSize];
-            initialCondition[i] = _initialCondition[i];
-            current_point[i] = initialCondition[i];
-            realValues[i] = _realValue[i];
+            trace.push_back( std::vector<float>(chunkSize) );
+            sigma.push_back( sqrt( initialConditions[i] ) );
 	}
-
 
         // construct a trivial random generator engine from a time-based seed:
         unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
         generator.seed(seed);
-
-        // logp = defaultLogP;
     }
-
 
     void run(){
         loop();
@@ -78,15 +74,16 @@ private:
 
     float current_log_likelihood;
 
-    float *realValues;
-    float *sigma;
-    float *current_point;
-    float *initialCondition;
-    float **trace; // the chain containing the log likelihood of all accepted points
-    float *log_likelihood; // the chain containing the log likelihood of all accepted points
+    std::vector<float> realValues;
+    std::vector<float> current_point;
+    std::vector<float> initialConditions;
+    std::vector<float> log_likelihood;
+    std::vector<float> data;
+    std::vector<float> sigma;
+    std::vector< std::vector<float> > trace;
 
     // float (*logp)(float*);
-    LogP logP;
+    Model model;
     ProposalFunction proposalFunction;
 
     int chunkStepNumber;
@@ -94,21 +91,13 @@ private:
     int nThreads;
     static const int maxRAM = 2e9;
 
-    void resetChains(){
-        for(int i = 0;i<nVar;i++){
-            memset(trace[i],0,chunkSize*sizeof(float));
-        }
-        memset(log_likelihood,0,chunkSize*sizeof(float)); 
-        chunkStepNumber= 0 ;
-    }
-
     void saveMetaData(){
         std::ofstream myfile( filename+"/metadata.txt", std::ios::out);
         myfile << "nStep " << nStep << std::endl;
         myfile << "nVar " << nVar << std::endl;
         myfile << "chunkSize " << chunkSize << std::endl;
         for(int i = 0;i<nVar;i++){
-            myfile << "initialPoints_" << i << " " << initialCondition[i] << std::endl;
+            myfile << "initialPoints_" << i << " " << initialConditions[i] << std::endl;
             myfile << "realValues_" << i << " " << realValues[i] << std::endl;
         }
         myfile.close();
@@ -127,7 +116,7 @@ private:
     
             //std::clock_t start = std::clock();
 
-            myfile.write((char*)trace[i], sizeof(float)*chunkStepNumber);
+            myfile.write((char*)&trace[i][0], sizeof(float)*chunkStepNumber);
             myfile.close();
 	}
 
@@ -135,7 +124,7 @@ private:
         fname << filename << "/lik_chunk" << chunkNumber << ".bin";
         std::ofstream myfile( fname.str(), std::ios::out | std::ios::binary);
         myfile.write((char*)&chunkStepNumber, sizeof(int));
-        myfile.write((char*)log_likelihood, sizeof(float)*chunkStepNumber);
+        myfile.write((char*)&log_likelihood[0], sizeof(float)*chunkStepNumber);
         myfile.close();
 
         chunkStepNumber = 0;
@@ -148,16 +137,11 @@ private:
 	}
     }
 
-    // void setLogLikelihoodFunction( float (*f)(float*) ){
-    //     logp = f;
-    // }
-
-
     void setVerbose(bool isVerbose){
         verbose = isVerbose;
     }
 
-    void updateStep(float* proposed_point, const float &proposed_log_likelihood){
+    void updateStep(const std::vector<float> &proposed_point, const float &proposed_log_likelihood){
         if(verbose) std::cout << "accepted" << std::endl;
         for(int i = 0;i<nVar;i++){
             current_point[i] = proposed_point[i];
@@ -186,13 +170,13 @@ private:
 
         saveMetaData();
 
-        current_log_likelihood = LogP::getValue(initialCondition);
+        current_log_likelihood = model.getLogLikelihood(initialConditions, data, nVar);
 
         for( int i = 0; i<nStep; i++){
-            float proposed_point[nVar];
+            std::vector<float> proposed_point(nVar);
             if( i%400000 == 0) printf("%i/%i : %i%%\n",i, nStep, int(float(i)/float(nStep)*100));
-            ProposalFunction::proposePoint(current_point, proposed_point);
-            float proposed_log_likelihood = LogP::getValue(proposed_point);
+            ProposalFunction::proposePoint(current_point, proposed_point, nVar, sigma);
+            float proposed_log_likelihood = model.getLogLikelihood(proposed_point, data, nVar);
             float the_likelihood_ratio = exp(proposed_log_likelihood-current_log_likelihood);
 
             if( verbose ){
@@ -220,43 +204,146 @@ private:
 };
 
 
-template <int nVar> struct DefaultProposalFunction{
-    static void proposePoint(float *previous_point, float* proposed_point){
-        double sigma = 1;
+ struct DefaultProposalFunction{
+     static void proposePoint(const std::vector<float> &previous_point, std::vector<float> proposed_point, const int &nVar, const std::vector<float> &sigma){
         for(int i = 0;i<nVar;i++){
-            proposed_point[i] = previous_point[i] + sigma * normalDistrib(generator);
+            proposed_point[i] = previous_point[i] + sigma[i] * normalDistrib(generator);
         }
     }
 };
 
-template < int nVar > struct DefaultLogP{
-    static float getValue(float *point){
+struct DefaultLogP{
+    static float getValue(const std::vector<float> &point, const std::vector<float> &data, const int &nVar){
         float log = 0;
         for( int i = 0; i<nVar;i++){
-            log+= -pow((point[i]-gInitialCondition[i])/sqrt(gInitialCondition[i]),2);
+            log+= -pow((point[i]-data[i])/sqrt(data[i]),2);
         }
         return log;
     }
 };
 
-int main(int argc, char** argv){
-    std::clock_t start = std::clock();
-    gInitialCondition.push_back(1000);
-    gInitialCondition.push_back(100);
-    gInitialCondition.push_back(30);
-    gInitialCondition.push_back(1);    
 
-    std::string name = "test";
-    if( argc > 1 ) name = argv[1];
+std::vector<float> getBinningFromMatrixFirstRow( std::string matrixFileName ){
+    std::string cmd = "cat " + matrixFileName + " | head -n 1 | awk -F',' '{for(i=2;i<=NF;i++) print $i}'";
+    return generalUtils::stringTo<float>( generalUtils::splitIntoLines( generalUtils::exec( cmd ) ) );
+}
 
-    #define NVAR 4
+std::vector<float> getBinningFromMatrixFirstColumn( std::string matrixFileName ){
+    std::string cmd = "cat " + matrixFileName + " | awk -F',' '{print $1}' | tail -n +2";
+    return generalUtils::stringTo<float>( generalUtils::splitIntoLines( generalUtils::exec( cmd ) ) );
+}
+
+void fillMatrixFromPandasFile( Matrix &matrix, std::string filename){
+    std::vector<std::string> matrixRows = generalUtils::splitIntoLines( generalUtils::exec("cat " + filename + " | tail -n +2 | awk -F',' '{for(i=2;i<NF;i++)printf(\"%s \",$i); printf(\"\\n\")}'") );
+    for(int row = 0;row<matrixRows.size()-1;row++){ // Last line is for overflow, hence the -1
+        std::cout << "matrixRows[row] : " << matrixRows[row] << std::endl;
+        std::vector<float> rowElements = generalUtils::stringTo<float>( generalUtils::split(matrixRows[row], " "));
+        for(int column = 0;column<rowElements.size();column++){
+            matrix.set(column,row, rowElements[column]);
+        }
+    }
+
+    matrix.dump();
+}
+
+
+struct RealisticToyModel{
+
+    RealisticToyModel(){
+        std::cout << "Hello realistic" << std::endl;
+        
+        std::string rigidityFile = "datasets/R_resolution.csv";
+        std::string betaFile     = "datasets/B_resolution.csv";
+
+        std::vector<float> rgdtBinsT = getBinningFromMatrixFirstRow   ( rigidityFile );
+        std::vector<float> rgdtBinsM = getBinningFromMatrixFirstColumn( rigidityFile );
+
+        std::vector<float> betaBinsT = getBinningFromMatrixFirstRow   ( betaFile );
+        std::vector<float> betaBinsM = getBinningFromMatrixFirstColumn( betaFile );
     
-    MCMC<DefaultLogP<NVAR>, DefaultProposalFunction<NVAR> > a(gInitialCondition, name, gInitialCondition);
-    a.setSteps(100000);
+        model = new PDModel( betaBinsT, betaBinsM, rgdtBinsT, rgdtBinsM);
+
+        Matrix rigidityMatrix( rgdtBinsT.size()-1, rgdtBinsM.size()-1 );
+        Matrix betaMatrix    ( betaBinsT.size()-1, betaBinsM.size()-1 );
+
+        fillMatrixFromPandasFile( rigidityMatrix, "datasets/R_resolution.csv");
+        fillMatrixFromPandasFile( betaMatrix, "datasets/B_resolution.csv");
+
+        model -> SetRigidityResolution<Matrix>(rigidityMatrix);
+        model -> SetBetaResolution<Matrix>(betaMatrix);
+
+
+        // Set true values of the model
+        std::vector<float> toyFluxP, toyFluxD;
+        for( int i = 0; i< betaBinsM.size() -1; i++){
+            toyFluxP.push_back(100);
+            toyFluxD.push_back(100);
+        }
+
+        realValues = toyFluxP;
+        realValues.insert(realValues.end(), toyFluxD.begin(), toyFluxD.end());
+
+        // Set initial conditions on true value
+        initialConditions = realValues;
+
+        // Generate fake data
+        model -> GenerateToyObservedData(toyFluxP, toyFluxD);
+
+        
+        
+    }
+
+    ~RealisticToyModel(){
+        delete model;
+    }
+    
+
+    PDModel *model;
+    std::vector<float> initialConditions;
+    std::vector<float> realValues;
+    
+    float getLogLikelihood(const std::vector<float> &point, const std::vector<float> data, const int &nVar){
+        float log = model -> GetLogLikelihood( &point[0], &point[initialConditions.size()/2] );
+
+        // # Didn't figure that out yet
+        // #firstDerivative = np.diff(np.log(value))
+        // #secondDerivative = np.fabs(np.diff(firstDerivative))
+        // #smoothness = -(alpha * secondDerivative).sum()
+        //         return log #+ smoothness
+
+        return log;
+        
+
+    }
+};
+
+
+
+int main(int argc, char** argv){
+    int c;
+    int nStep = 0;
+    std::string name = "test";
+
+    while((c =  getopt(argc, argv, "n:f:")) != EOF)
+        {
+            switch (c)
+                {
+                case 'n':
+                    nStep = generalUtils::stringTo<int>(optarg);
+                    break;
+                case 'f':
+                    name = optarg;
+                    break;
+                }
+        }
+
+    std::clock_t start = std::clock();
+
+    MCMC<RealisticToyModel, DefaultProposalFunction > a(name);
+    if( nStep > 0 ) a.setSteps(nStep);
     a.run();
     std::cout << "sizeof(a) : " << sizeof(a) << std::endl;
     std::cout << "Time : " << (std::clock() - start) / (float)(CLOCKS_PER_SEC / 1000) << " ms" << std::endl;
     return 0;
 }
-
 

@@ -20,7 +20,8 @@ PDModel::PDModel(
     const std::vector<float> & rT, const std::vector<float> & rM
 ): betaBinsT(bT), betaBinsM(bM), betaF(bT.size()-1, bM.size()-1),
    rgdtBinsT(rT), rgdtBinsM(rM), rgdtF(rT.size()-1, rM.size()-1),
-   deltaP(bT.size()-1, rT.size()-1), deltaD(bT.size()-1, rT.size()-1)
+   deltaP(bT.size()-1, rT.size()-1), deltaD(bT.size()-1, rT.size()-1),
+   observed(bM.size()-1,rM.size()-1)
 {
     for(int bBin=0; bBin < bT.size() - 1; bBin++)
     {
@@ -40,19 +41,40 @@ PDModel::PDModel(
 
 
 
-Matrix PDModel::GetPrediction( const std::vector<float> & fluxP,
-                              const std::vector<float> & fluxD  )
+Matrix PDModel::GetPrediction( const float* const fluxP,
+                               const float* const fluxD  )
 {
+    std::cout << "fluxP : " << fluxP << std::endl;
+    std::cout << "fluxD : " << fluxD << std::endl;
     Matrix fluxMatrixP(deltaP), fluxMatrixD(deltaD);
 
     fluxMatrixP.map([fluxP](int b, int r, float v){return v*fluxP[b];});
     fluxMatrixD.map([fluxD](int b, int r, float v){return v*fluxD[b];});
 
+    std::cout << "yo" << std::endl;
+    
     Matrix smearP = betaF.Dot(fluxMatrixP.Dot(rgdtF));
-    Matrix smearD = betaF.Dot(fluxMatrixD.Dot(rgdtF));
+    std::cout << "yo2" << std::endl;
+    
 
-    smearP.map([smearD](int b, int r, float v){return v + smearD.get(b,r);});
+    Matrix smearD = betaF.Dot(fluxMatrixD.Dot(rgdtF));
+    std::cout << "yo3" << std::endl;
+    //    fluxMatrixD.dump();
+    rgdtF.dump();
+    //smearD.dump();
+    smearP.map([smearD](int b, int r, float v){std::cout << b << "\t" << r << "\t" << v << std::endl;return v + smearD.get(b,r);});
+
+    std::cout << "fluxP : " << fluxP << std::endl;
+    std::cout << "fluxD : " << fluxD << std::endl;
 
     return smearP;
 }
 
+float PDModel::GetLogLikelihood( const float* const fluxP,
+                                 const float* const fluxD  )
+{
+
+    Matrix prediction = GetPrediction( fluxP, fluxD );
+
+    return prediction.applyAndSum([this](float expected , int n, float m){return observed.get(n,m) * log(expected) - expected;});
+}
