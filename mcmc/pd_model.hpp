@@ -8,7 +8,7 @@ class Matrix
     std::vector<float> data;
 public:
     Matrix(int iN, int iM): 
-        N(iN), M(iM),data(std::vector<float>(N*M,0)){}
+        N(iN), M(iM),data(N*M,0){}
 
     inline float &  at(int n, int m) { return data[n + N*m]; }
     inline float   get(int n, int m) const { return data[n + N*m]; }
@@ -19,7 +19,7 @@ public:
     {
         for(int n = 0; n < N; n++) 
             for(int m = 0; m < M; m++) 
-                at(n,m) = matrix.get(n,m);
+                at(n,m) = matrix[n][m];
     }
 
     Matrix Dot(const Matrix & rhs) const
@@ -29,6 +29,7 @@ public:
             for(int m = 0; m < rhs.M; m++) 
                 for(int k = 0; k < M; k++) 
                     ret.at(n,m) += get(n,k)*rhs.get(k,m);
+        return ret;
     }
 
     void map(std::function<float(float,int,int)> func)
@@ -59,6 +60,14 @@ public:
 
     
 };
+
+template<>
+void Matrix::Fill(Matrix matrix)
+{
+    for(int n = 0; n < N; n++) 
+        for(int m = 0; m < M; m++) 
+            at(n,m) = matrix.get(n,m);
+}
 
 
 class PDModel
