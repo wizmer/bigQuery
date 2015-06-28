@@ -65,9 +65,39 @@ bool test_dot_2()
     return pass;
 }
 
+bool test_copy()
+{
+    Matrix A(4,3), R(4,3);
+    V2D data = { {1,2,3},
+                 {4,5,6},
+                 {7,8,9},
+                 {1,2,3} };
+    A.Fill(data);
+    R.Fill(data);
+ 
+    Matrix B(4,3);
+    B = A;
+    A.map([](float v, int n,int m){return 0;});
+
+    bool pass = true;
+    B.map([&pass, &R](float v, int n,int m){pass = pass && (R.get(n,m) == v); return v;});
+
+    if(!pass)
+    {
+        std::cout << __FUNCTION__ << " failed\n";
+        B.map([](float v, int n,int m){std::cout << v << ","; return v;});
+        std::cout << "\n";
+    }
+    else std::cout << __FUNCTION__ << " passed.\n";
+
+    return pass;
+
+}
+
 int main(void)
 {
     test_dot_1();
     test_dot_2();
+    test_copy();
     return 0;
 }
