@@ -1,5 +1,5 @@
 #include <iostream>
-#include "pd_model.hpp"
+#include "Matrix.hpp"
 
 typedef std::vector<std::vector<float>> V2D;
 
@@ -64,6 +64,7 @@ bool test_dot_2()
 
     return pass;
 }
+
 int main(void)
 {
     test_dot_1();

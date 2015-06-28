@@ -11,6 +11,8 @@ read:
 pd_model.o: pd_model.cpp  pd_model.hpp
 	g++ ${OPTIMIZATION} -c pd_model.cpp -std=c++11 
 
+test_matrix: test_matrix.cpp Matrix.hpp
+	g++ -o $@ $< -std=c++11 
 
 clean:
 	rm -f mcmc reader pd_model.o
