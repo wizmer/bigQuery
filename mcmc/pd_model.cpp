@@ -38,34 +38,18 @@ PDModel::PDModel(
     }
 }
 
-
-
-
 Matrix PDModel::GetPrediction( const float* const fluxP,
                                const float* const fluxD  )
 {
-    std::cout << "fluxP : " << fluxP << std::endl;
-    std::cout << "fluxD : " << fluxD << std::endl;
     Matrix fluxMatrixP(deltaP), fluxMatrixD(deltaD);
 
-    fluxMatrixP.map([fluxP](int b, int r, float v){return v*fluxP[b];});
-    fluxMatrixD.map([fluxD](int b, int r, float v){return v*fluxD[b];});
+    fluxMatrixP.map([&fluxP](float v, int b, int r){return v*fluxP[b];});
+    fluxMatrixD.map([&fluxD](float v, int b, int r){return v*fluxD[b];});
 
-    std::cout << "yo" << std::endl;
-    
     Matrix smearP = betaF.Dot(fluxMatrixP.Dot(rgdtF));
-    std::cout << "yo2" << std::endl;
-    
-
     Matrix smearD = betaF.Dot(fluxMatrixD.Dot(rgdtF));
-    std::cout << "yo3" << std::endl;
-    //    fluxMatrixD.dump();
-    rgdtF.dump();
-    //smearD.dump();
-    smearP.map([smearD](int b, int r, float v){std::cout << b << "\t" << r << "\t" << v << std::endl;return v + smearD.get(b,r);});
 
-    std::cout << "fluxP : " << fluxP << std::endl;
-    std::cout << "fluxD : " << fluxD << std::endl;
+    smearP.map([&smearD](float v, int b, int r){return v + smearD.get(b,r);});
 
     return smearP;
 }
