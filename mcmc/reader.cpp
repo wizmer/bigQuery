@@ -40,24 +40,20 @@ public:
             for(int iVar = 0; iVar<nVar ;iVar++){
                 std::string chunkName = Form("%s/par%i_chunk%i.bin", filename.c_str(), iVar, jChunk);
                 readBinary( chunkName, iVar );
-                std::cout << metadata["nStep"] << std::endl;
                 for(int j = 0;j < metadata["nStep"] ;j++){
                     h[iVar] -> Fill( trace[iVar][j] );
                     //std::cout << "trace["<<iVar<<"]["<< j << "] = " << trace[iVar][j] << std::endl;
                 }
 
-                for(int jVar = 0; jVar<iVar && iVar-jVar > 3;jVar++){
-                    //for(int k = 0;k < metadata["nStep"] ;k++) h2[ std::pair<int,int>(iVar,jVar) ] -> Fill( trace[iVar][k], trace[jVar][k] );
+		for(int j = 0;j<3;j++){
+		  if(iVar - j< 0) continue;
+		  for(int k = 0;k < metadata["nStep"] ;k++) h2[ std::pair<int,int>(iVar,iVar-j) ] -> Fill( trace[iVar][k], trace[iVar-j][k] );
                 }
             }
                 
         }
 
         plot();
-        for(int i = 0;i<nVar;i++){
-            std::cout << "borne[0].first : " << borne[i].first << std::endl;
-            std::cout << "borne[0].second : " << borne[i].second << std::endl;
-	}
     }
     
 private:
@@ -117,7 +113,6 @@ private:
     }
     
     void readBinary(std::string fname, int iParam){
-        std::cout << "binary" << std::endl;
         std::ifstream f(fname.c_str(), std::ios::binary );
 
         float sum = 0;
@@ -142,8 +137,6 @@ private:
             }
             float mean = sum/(float)n;
             float sigma = sqrt( sum2/(float)n - mean*mean);
-            std::cout << "mean : " << mean << std::endl;
-            std::cout << "sigma : " << sigma << std::endl;
             borne[iParam].first  = mean - 3*sigma;
             borne[iParam].second = mean + 3*sigma;
             firstRead[iParam] = false;
