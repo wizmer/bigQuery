@@ -236,31 +236,33 @@ std::vector<float> getBinningFromMatrixFirstColumn( std::string matrixFileName )
 void fillMatrixFromPandasFile( Matrix &matrix, std::string filename){
     std::vector<std::string> matrixRows = generalUtils::splitIntoLines( generalUtils::exec("cat " + filename + " | tail -n +2 | awk -F',' '{for(i=2;i<NF;i++)printf(\"%s \",$i); printf(\"\\n\")}'") );
     for(int row = 0;row<matrixRows.size()-1;row++){ // Last line is for overflow, hence the -1
-        std::cout << "matrixRows[row] : " << matrixRows[row] << std::endl;
         std::vector<float> rowElements = generalUtils::stringTo<float>( generalUtils::split(matrixRows[row], " "));
         for(int column = 0;column<rowElements.size();column++){
             matrix.set(column,row, rowElements[column]);
         }
     }
-
-    matrix.dump();
 }
 
 
 struct RealisticToyModel{
 
     RealisticToyModel(){
-        std::cout << "Hello realistic" << std::endl;
         
         std::string rigidityFile = "datasets/R_resolution.csv";
         std::string betaFile     = "datasets/B_resolution.csv";
 
-        std::vector<float> rgdtBinsT = getBinningFromMatrixFirstRow   ( rigidityFile );
-        std::vector<float> rgdtBinsM = getBinningFromMatrixFirstColumn( rigidityFile );
+        std::vector<float> rgdtBinsM = getBinningFromMatrixFirstRow   ( rigidityFile );
+        std::vector<float> rgdtBinsT = getBinningFromMatrixFirstColumn( rigidityFile );
 
-        std::vector<float> betaBinsT = getBinningFromMatrixFirstRow   ( betaFile );
-        std::vector<float> betaBinsM = getBinningFromMatrixFirstColumn( betaFile );
-    
+        std::vector<float> betaBinsM = getBinningFromMatrixFirstRow   ( betaFile );
+        std::vector<float> betaBinsT = getBinningFromMatrixFirstColumn( betaFile );
+
+        for(int i = 0;i<betaBinsM.size();i++){
+            std::cout << "betaBinsM[i] : " << betaBinsM[i] << std::endl;
+        }
+        exit(-1);
+        
+        
         model = new PDModel( betaBinsT, betaBinsM, rgdtBinsT, rgdtBinsM);
 
         Matrix rigidityMatrix( rgdtBinsT.size()-1, rgdtBinsM.size()-1 );
@@ -269,8 +271,8 @@ struct RealisticToyModel{
         fillMatrixFromPandasFile( rigidityMatrix, "datasets/R_resolution.csv");
         fillMatrixFromPandasFile( betaMatrix, "datasets/B_resolution.csv");
 
-        model -> SetRigidityResolution<Matrix>(rigidityMatrix);
-        model -> SetBetaResolution<Matrix>(betaMatrix);
+        model -> SetRigidityResolution(rigidityMatrix);
+        model -> SetBetaResolution(betaMatrix);
 
 
         // Set true values of the model
@@ -312,8 +314,6 @@ struct RealisticToyModel{
         //         return log #+ smoothness
 
         return log;
-        
-
     }
 };
 
