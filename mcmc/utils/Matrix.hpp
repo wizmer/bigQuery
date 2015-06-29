@@ -11,9 +11,7 @@ public:
         N(iN), M(iM),data(N*M,0){}
 
     inline float &  at(int n, int m) { return data[n + N*m]; }
-    inline float   get(int n, int m) const { 
-      std::cout << "n + N*m : " << n + N*m << std::endl;
-      return data[n + N*m]; }
+    inline float   get(int n, int m) const { return data[n + N*m]; }
     inline void    set(int n, int m, float val) { data[n + N*m] = val; }
 
     template<typename T>

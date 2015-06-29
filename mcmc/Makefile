@@ -1,7 +1,7 @@
 INCLUDE=-I./utils
 AMSSTATICLIBS := -L$(AMSWD)/lib/linuxx8664gcc5.34 -lntuple_slc6_PG
 LIBS=`root-config --cflags --libs ` 
-OPTIMIZATION=-g
+OPTIMIZATION=-O3
 
 mcmc:	mcmc.cpp pd_model.o generalUtils.o
 	g++ ${OPTIMIZATION} ${INCLUDE} $^ -o mcmc -std=c++11 ${LIBS}
