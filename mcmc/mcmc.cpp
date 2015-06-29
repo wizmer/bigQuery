@@ -28,7 +28,7 @@ public:
             exit(-1);
         }
         
-        verbose = true;
+        verbose = false;
 
         chunkStepNumber = 0;
         initialConditions = model.initialConditions;
@@ -62,6 +62,10 @@ public:
     void setSteps(int _nSteps){
         nStep = _nSteps;
     }
+
+  void setVerbose(bool isVerbose){
+    verbose = isVerbose;
+  }
 
 private:
     int chunkSize;
@@ -137,9 +141,6 @@ private:
 	}
     }
 
-    void setVerbose(bool isVerbose){
-        verbose = isVerbose;
-    }
 
     void updateStep(const std::vector<float> &proposed_point, const float &proposed_log_likelihood){
         if(verbose) std::cout << "accepted" << std::endl;
@@ -174,10 +175,12 @@ private:
 
         for( int i = 0; i<nStep; i++){
             std::vector<float> proposed_point(nVar);
-            if( i%400000 == 0) printf("%i/%i : %i%%\n",i, nStep, int(float(i)/float(nStep)*100));
+            if( i%10000 == 0) printf("%i/%i : %i%%\n",i, nStep, int(float(i)/float(nStep)*100));
             ProposalFunction::proposePoint(current_point, proposed_point, nVar, sigma);
+
             float proposed_log_likelihood = model.getLogLikelihood(proposed_point, data, nVar);
             float the_likelihood_ratio = exp(proposed_log_likelihood-current_log_likelihood);
+	    //	    exit(-1);
 
             if( verbose ){
                 std::cout << "current_log_likelihood : " << current_log_likelihood << std::endl;
@@ -205,9 +208,11 @@ private:
 
 
  struct DefaultProposalFunction{
-     static void proposePoint(const std::vector<float> &previous_point, std::vector<float> proposed_point, const int &nVar, const std::vector<float> &sigma){
+     static void proposePoint(const std::vector<float> &previous_point, std::vector<float> &proposed_point, const int &nVar, const std::vector<float> &sigma){
         for(int i = 0;i<nVar;i++){
+	  
             proposed_point[i] = previous_point[i] + sigma[i] * normalDistrib(generator);
+	    //std::cout << "proposed_point["<<i<<"] : " << proposed_point[i] << std::endl;
         }
     }
 };
@@ -234,33 +239,28 @@ std::vector<float> getBinningFromMatrixFirstColumn( std::string matrixFileName )
 }
 
 void fillMatrixFromPandasFile( Matrix &matrix, std::string filename){
-    std::vector<std::string> matrixRows = generalUtils::splitIntoLines( generalUtils::exec("cat " + filename + " | tail -n +2 | awk -F',' '{for(i=2;i<NF;i++)printf(\"%s \",$i); printf(\"\\n\")}'") );
+  std::vector<std::string> matrixRows = generalUtils::splitIntoLines( generalUtils::exec("cat " + filename + " | tail -n +2 | awk -F',' '{sum=0;for(i=2;i<=NF;i++) sum+=$i; for(i=2;i<NF;i++)printf(\"%s \",$i/sum); printf(\"\\n\")}'") );
     for(int row = 0;row<matrixRows.size()-1;row++){ // Last line is for overflow, hence the -1
-        std::cout << "matrixRows[row] : " << matrixRows[row] << std::endl;
         std::vector<float> rowElements = generalUtils::stringTo<float>( generalUtils::split(matrixRows[row], " "));
         for(int column = 0;column<rowElements.size();column++){
-            matrix.set(column,row, rowElements[column]);
+	  matrix.set(row, column, rowElements[column]);
         }
     }
-
-    matrix.dump();
 }
-
 
 struct RealisticToyModel{
 
     RealisticToyModel(){
-        std::cout << "Hello realistic" << std::endl;
         
         std::string rigidityFile = "datasets/R_resolution.csv";
         std::string betaFile     = "datasets/B_resolution.csv";
 
-        std::vector<float> rgdtBinsT = getBinningFromMatrixFirstRow   ( rigidityFile );
-        std::vector<float> rgdtBinsM = getBinningFromMatrixFirstColumn( rigidityFile );
+        std::vector<float> rgdtBinsM = getBinningFromMatrixFirstRow   ( rigidityFile );
+        std::vector<float> rgdtBinsT = getBinningFromMatrixFirstColumn( rigidityFile );
 
-        std::vector<float> betaBinsT = getBinningFromMatrixFirstRow   ( betaFile );
-        std::vector<float> betaBinsM = getBinningFromMatrixFirstColumn( betaFile );
-    
+        std::vector<float> betaBinsM = getBinningFromMatrixFirstRow   ( betaFile );
+        std::vector<float> betaBinsT = getBinningFromMatrixFirstColumn( betaFile );
+
         model = new PDModel( betaBinsT, betaBinsM, rgdtBinsT, rgdtBinsM);
 
         Matrix rigidityMatrix( rgdtBinsT.size()-1, rgdtBinsM.size()-1 );
@@ -279,7 +279,7 @@ struct RealisticToyModel{
             toyFluxP.push_back(100);
             toyFluxD.push_back(100);
         }
-
+	
         realValues = toyFluxP;
         realValues.insert(realValues.end(), toyFluxD.begin(), toyFluxD.end());
 
@@ -288,8 +288,6 @@ struct RealisticToyModel{
 
         // Generate fake data
         model -> GenerateToyObservedData(toyFluxP, toyFluxD);
-
-        
         
     }
 
@@ -303,8 +301,10 @@ struct RealisticToyModel{
     std::vector<float> realValues;
     
     float getLogLikelihood(const std::vector<float> &point, const std::vector<float> data, const int &nVar){
+      // for(int i = 0;i<point.size();i++){
+      //std::cout << "point["<<i<<"] : " << point[i] << std::endl;
+      // }
         float log = model -> GetLogLikelihood( &point[0], &point[initialConditions.size()/2] );
-
         // # Didn't figure that out yet
         // #firstDerivative = np.diff(np.log(value))
         // #secondDerivative = np.fabs(np.diff(firstDerivative))
@@ -312,8 +312,6 @@ struct RealisticToyModel{
         //         return log #+ smoothness
 
         return log;
-        
-
     }
 };
 
@@ -323,8 +321,9 @@ int main(int argc, char** argv){
     int c;
     int nStep = 0;
     std::string name = "test";
+    bool verbose = false;
 
-    while((c =  getopt(argc, argv, "n:f:")) != EOF)
+    while((c =  getopt(argc, argv, "n:f:v")) != EOF)
         {
             switch (c)
                 {
@@ -332,18 +331,22 @@ int main(int argc, char** argv){
                     nStep = generalUtils::stringTo<int>(optarg);
                     break;
                 case 'f':
-                    name = optarg;
-                    break;
-                }
+		  name = optarg;
+		  break;
+		case 'v':
+		  verbose = true;
+		  break;
+		}
         }
 
     std::clock_t start = std::clock();
 
     MCMC<RealisticToyModel, DefaultProposalFunction > a(name);
+    a.setVerbose(verbose);
     if( nStep > 0 ) a.setSteps(nStep);
     a.run();
     std::cout << "sizeof(a) : " << sizeof(a) << std::endl;
-    std::cout << "Time : " << (std::clock() - start) / (float)(CLOCKS_PER_SEC / 1000) << " ms" << std::endl;
+    std::cout << "Time : " << (std::clock() - start) / (float)(CLOCKS_PER_SEC) << " s" << std::endl;
     return 0;
 }
 
