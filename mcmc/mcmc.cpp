@@ -28,7 +28,7 @@ public:
             exit(-1);
         }
         
-        verbose = true;
+        verbose = false;
 
         chunkStepNumber = 0;
         initialConditions = model.initialConditions;
@@ -62,6 +62,10 @@ public:
     void setSteps(int _nSteps){
         nStep = _nSteps;
     }
+
+  void setVerbose(bool isVerbose){
+    verbose = isVerbose;
+  }
 
 private:
     int chunkSize;
@@ -137,9 +141,6 @@ private:
 	}
     }
 
-    void setVerbose(bool isVerbose){
-        verbose = isVerbose;
-    }
 
     void updateStep(const std::vector<float> &proposed_point, const float &proposed_log_likelihood){
         if(verbose) std::cout << "accepted" << std::endl;
@@ -174,7 +175,7 @@ private:
 
         for( int i = 0; i<nStep; i++){
             std::vector<float> proposed_point(nVar);
-            if( i%400000 == 0) printf("%i/%i : %i%%\n",i, nStep, int(float(i)/float(nStep)*100));
+            if( i%10000 == 0) printf("%i/%i : %i%%\n",i, nStep, int(float(i)/float(nStep)*100));
             ProposalFunction::proposePoint(current_point, proposed_point, nVar, sigma);
 
             float proposed_log_likelihood = model.getLogLikelihood(proposed_point, data, nVar);
@@ -268,8 +269,6 @@ struct RealisticToyModel{
         fillMatrixFromPandasFile( rigidityMatrix, "datasets/R_resolution.csv");
         fillMatrixFromPandasFile( betaMatrix, "datasets/B_resolution.csv");
 
-	std::cout <<  "hey !!" << std::endl;
-	betaMatrix.dump();
         model -> SetRigidityResolution(rigidityMatrix);
         model -> SetBetaResolution(betaMatrix);
 
@@ -322,8 +321,9 @@ int main(int argc, char** argv){
     int c;
     int nStep = 0;
     std::string name = "test";
+    bool verbose = false;
 
-    while((c =  getopt(argc, argv, "n:f:")) != EOF)
+    while((c =  getopt(argc, argv, "n:f:v")) != EOF)
         {
             switch (c)
                 {
@@ -331,18 +331,22 @@ int main(int argc, char** argv){
                     nStep = generalUtils::stringTo<int>(optarg);
                     break;
                 case 'f':
-                    name = optarg;
-                    break;
-                }
+		  name = optarg;
+		  break;
+		case 'v':
+		  verbose = true;
+		  break;
+		}
         }
 
     std::clock_t start = std::clock();
 
     MCMC<RealisticToyModel, DefaultProposalFunction > a(name);
+    a.setVerbose(verbose);
     if( nStep > 0 ) a.setSteps(nStep);
     a.run();
     std::cout << "sizeof(a) : " << sizeof(a) << std::endl;
-    std::cout << "Time : " << (std::clock() - start) / (float)(CLOCKS_PER_SEC / 1000) << " ms" << std::endl;
+    std::cout << "Time : " << (std::clock() - start) / (float)(CLOCKS_PER_SEC) << " s" << std::endl;
     return 0;
 }
 

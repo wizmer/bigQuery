@@ -43,7 +43,10 @@ Matrix PDModel::GetPrediction( const float* const fluxP,
 {
     Matrix fluxMatrixP(deltaP), fluxMatrixD(deltaD);
 
-    fluxMatrixP.map([&fluxP](float v, int b, int r){return v*fluxP[b];});
+    fluxMatrixP.map([&fluxP](float v, int b, int r){
+	//std::cout << "fluxP["<<b<<"] : " << fluxP[b] << std::endl;
+	return v*fluxP[b];
+      });
     fluxMatrixD.map([&fluxD](float v, int b, int r){return v*fluxD[b];});
 
     Matrix smearP = betaF.Dot(fluxMatrixP.Dot(rgdtF));
@@ -58,7 +61,16 @@ float PDModel::GetLogLikelihood( const float* const fluxP,
                                  const float* const fluxD  )
 {
 
+
     Matrix prediction = GetPrediction( fluxP, fluxD );
 
-    return prediction.applyAndSum([this](float expected , int n, float m){return observed.get(n,m) * log(expected) - expected;});
+    //    prediction.dump();
+    // std::cout << "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"  << std::endl;
+
+    // observed.dump();
+    float ret = prediction.applyAndSum(
+				  [this](float expected , int n, float m){
+				    return observed.get(n,m) * log(expected) - expected;
+				  });
+    return ret;
 }
