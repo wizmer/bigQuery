@@ -269,8 +269,8 @@ struct RealisticToyModel{
         fillMatrixFromPandasFile( rigidityMatrix, "datasets/R_resolution.csv");
         fillMatrixFromPandasFile( betaMatrix, "datasets/B_resolution.csv");
 
-        model -> SetRigidityResolution<Matrix>(rigidityMatrix);
-        model -> SetBetaResolution<Matrix>(betaMatrix);
+        model -> SetRigidityResolution(rigidityMatrix);
+        model -> SetBetaResolution(betaMatrix);
 
 
         // Set true values of the model
