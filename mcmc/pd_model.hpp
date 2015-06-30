@@ -25,8 +25,8 @@ public:
     float GetLogLikelihood( const float* const fluxP,
                             const float* const fluxD  );
 
-    void SetRigidityResolution(const Matrix & matrix){ rgdtF = matrix; }
-    void SetBetaResolution    (const Matrix & matrix){ betaF = matrix; }
+    void SetRigidityResolution(const Matrix & matrix);
+    void SetBetaResolution    (const Matrix & matrix);
     
     void GenerateToyObservedData(const std::vector<float> &fluxP,
                                  const std::vector<float> &fluxD  ){

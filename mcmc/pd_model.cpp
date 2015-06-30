@@ -38,15 +38,43 @@ PDModel::PDModel(
     }
 }
 
+void PDModel::SetRigidityResolution(const Matrix & matrix)
+{ 
+    if( matrix.getNrows() != (rgdtBinsT.size() - 1) ) 
+    {
+        std::cout <<"Error in " << __FUNCTION__ << "\n";
+        std::cout <<"Rigidity resolution matrix size "
+                  << "(" << matrix.getNrows()
+                  << "," << matrix.getNcolums() << ")\n";
+        std::cout <<"is incompatible with rigidity binning size "
+                  << (rgdtBinsT.size() - 1);
+        exit(-1);
+    }
+    rgdtF = matrix; 
+}
+
+
+void PDModel::SetBetaResolution    (const Matrix & matrix)
+{
+    if( matrix.getNrows() != (betaBinsT.size() - 1) ) 
+    {
+        std::cout <<"Error in " << __FUNCTION__ << "\n";
+        std::cout <<"Beta resolution matrix size "
+                  << "(" << matrix.getNrows()
+                  << "," << matrix.getNcolums() << ")\n";
+        std::cout <<"is incompatible with beta binning size "
+                  << (betaBinsT.size() - 1);
+        exit(-1);
+    }
+    betaF = matrix; 
+}
+
 Matrix PDModel::GetPrediction( const float* const fluxP,
                                const float* const fluxD  )
 {
     Matrix fluxMatrixP(deltaP), fluxMatrixD(deltaD);
 
-    fluxMatrixP.map([&fluxP](float v, int b, int r){
-	//std::cout << "fluxP["<<b<<"] : " << fluxP[b] << std::endl;
-	return v*fluxP[b];
-      });
+    fluxMatrixP.map([&fluxP](float v, int b, int r){return v*fluxP[b];});
     fluxMatrixD.map([&fluxD](float v, int b, int r){return v*fluxD[b];});
 
     Matrix smearP = betaF.Dot(fluxMatrixP.Dot(rgdtF));

@@ -11,6 +11,9 @@ public:
     Matrix(int iN, int iM): 
         nRows(iN), nColumns(iM),data(nRows*nColumns,0){}
 
+    inline int getNrows()   { return nRows;    }
+    inline int getNcolums() { return nColumns; }
+
     inline float &  at(int n, int m) { return data[n + nRows*m]; }
     inline float   get(int n, int m) const { return data[n + nRows*m]; }
     inline void    set(int n, int m, float val) { data[n + nRows*m] = val; }
