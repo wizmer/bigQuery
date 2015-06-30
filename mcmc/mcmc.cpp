@@ -290,6 +290,10 @@ struct RealisticToyModel{
     fillMatrixFromPandasFile( rigidityMatrix, "datasets/R_resolution.csv");
     fillMatrixFromPandasFile( betaMatrix, "datasets/B_resolution.csv");
 
+    // OMFG
+    rigidityMatrix = rigidityMatrix.Transpose();
+    betaMatrix = betaMatrix.Transpose();
+
     model -> SetRigidityResolution(rigidityMatrix);
     model -> SetBetaResolution(betaMatrix);
 

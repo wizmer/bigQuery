@@ -8,7 +8,7 @@ class PDModel
 {
     std::vector<float> betaBinsT, betaBinsM;
     std::vector<float> rgdtBinsT, rgdtBinsM;
-    Matrix  rgdtF,  betaF;
+    Matrix  rgdtF_transposed,  betaF;
     Matrix deltaP, deltaD;
     Matrix observed;
     
