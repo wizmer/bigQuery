@@ -8,6 +8,7 @@ class Matrix
     int nRows,nColumns;
     std::vector<float> data;
 public:
+    Matrix():nRows(0), nColumns(0) {}
     Matrix(int iN, int iM): 
         nRows(iN), nColumns(iM),data(nRows*nColumns,0){}
 

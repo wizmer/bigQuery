@@ -1,5 +1,6 @@
 #include <ctime>
 #include <iostream>
+#include <iosfwd>
 #include <fstream>
 #include <sstream>
 #include <random>
@@ -62,7 +63,7 @@ public:
       std::vector<float> fakeFluxP(nVar/2);
       std::vector<float> fakeFluxD(nVar/2);
       fakeFluxP[i] = 10000;
-      (model.model -> GetPrediction(&fakeFluxP[0],&fakeFluxD[0])).save(filename+"/predictedMatrix_"+generalUtils::toString(i));
+      (model.model.GetPrediction(&fakeFluxP[0],&fakeFluxD[0])).save(filename+"/predictedMatrix_"+generalUtils::toString(i));
     }
 
   }
@@ -263,82 +264,45 @@ void fillMatrixFromPandasFile( Matrix &matrix, std::string filename){
   }
 }
 
-struct RealisticToyModel{
+struct RealisticToyModel
+{
+    PDModel model;
+    std::vector<float> initialConditions;
+    std::vector<float> realValues;
 
-  RealisticToyModel(){
-        
-    std::string rigidityFile = "datasets/R_resolution.csv";
-    std::string betaFile     = "datasets/B_resolution.csv";
+    RealisticToyModel():
+        model(PDModel::FromCSVS("datasets/B_resolution.csv", "datasets/R_resolution.csv"))
+    {
+        // Set true values of the model
+        std::vector<float> toyFluxP, toyFluxD;
+        for( int i = 0; i < model.getBetaBinsM().size() - 1; i++){
+            toyFluxP.push_back(10000);
+            toyFluxD.push_back(10000);
+        }
 
-    std::vector<float> rgdtBinsM = getBinningFromMatrixFirstRow   ( rigidityFile );
-    std::vector<float> rgdtBinsT = getBinningFromMatrixFirstColumn( rigidityFile );
+        realValues = toyFluxP;
+        realValues.insert(realValues.end(), toyFluxD.begin(), toyFluxD.end());
 
-    std::vector<float> betaBinsM = getBinningFromMatrixFirstRow   ( betaFile );
-    std::vector<float> betaBinsT = getBinningFromMatrixFirstColumn( betaFile );
+        // Set initial conditions on true value
+        initialConditions = realValues;
 
-    model = new PDModel( betaBinsT, betaBinsM, rgdtBinsT, rgdtBinsM);
-
-    Matrix rigidityMatrix( rgdtBinsM.size()-1, rgdtBinsT.size()-1);
-    Matrix betaMatrix    ( betaBinsM.size()-1, betaBinsT.size()-1);
-
-    std::cout << "rgdtBinsT.size() : " << rgdtBinsT.size() << std::endl;
-    std::cout << "rgdtBinsM.size() : " << rgdtBinsM.size() << std::endl;
-
-    std::cout << "betaBinsT.size() : " << betaBinsT.size() << std::endl;
-    std::cout << "betaBinsM.size() : " << betaBinsM.size() << std::endl;
-
-    fillMatrixFromPandasFile( rigidityMatrix, "datasets/R_resolution.csv");
-    fillMatrixFromPandasFile( betaMatrix, "datasets/B_resolution.csv");
-
-    // OMFG
-    rigidityMatrix = rigidityMatrix.Transpose();
-    betaMatrix = betaMatrix.Transpose();
-
-    model -> SetRigidityResolution(rigidityMatrix);
-    model -> SetBetaResolution(betaMatrix);
-
-
-    // Set true values of the model
-    std::vector<float> toyFluxP, toyFluxD;
-    for( int i = 0; i< betaBinsM.size() -1; i++){
-      toyFluxP.push_back(10000);
-      toyFluxD.push_back(10000);
+        // Generate fake data
+        model.GenerateToyObservedData(toyFluxP, toyFluxD);
     }
-	
-    realValues = toyFluxP;
-    realValues.insert(realValues.end(), toyFluxD.begin(), toyFluxD.end());
 
-    // Set initial conditions on true value
-    initialConditions = realValues;
+    float getLogLikelihood(const std::vector<float> &point, const std::vector<float> data, const int &nVar){
+        // for(int i = 0;i<point.size();i++){
+        //std::cout << "point["<<i<<"] : " << point[i] << std::endl;
+        // }
+        float log = model.GetLogLikelihood( &point[0], &point[initialConditions.size()/2] );
+        // # Didn't figure that out yet
+        // #firstDerivative = np.diff(np.log(value))
+        // #secondDerivative = np.fabs(np.diff(firstDerivative))
+        // #smoothness = -(alpha * secondDerivative).sum()
+        //         return log #+ smoothness
 
-    // Generate fake data
-    model -> GenerateToyObservedData(toyFluxP, toyFluxD);
-
-        
-  }
-
-  ~RealisticToyModel(){
-    delete model;
-  }
-    
-
-  PDModel *model;
-  std::vector<float> initialConditions;
-  std::vector<float> realValues;
-    
-  float getLogLikelihood(const std::vector<float> &point, const std::vector<float> data, const int &nVar){
-    // for(int i = 0;i<point.size();i++){
-    //std::cout << "point["<<i<<"] : " << point[i] << std::endl;
-    // }
-    float log = model -> GetLogLikelihood( &point[0], &point[initialConditions.size()/2] );
-    // # Didn't figure that out yet
-    // #firstDerivative = np.diff(np.log(value))
-    // #secondDerivative = np.fabs(np.diff(firstDerivative))
-    // #smoothness = -(alpha * secondDerivative).sum()
-    //         return log #+ smoothness
-
-    return log;
-  }
+        return log;
+    }
 };
 
 
