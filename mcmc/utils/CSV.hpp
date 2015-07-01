@@ -48,7 +48,5 @@ Matrix getMatrixAndBins( std::fstream & fs,
 
     M.map([&sums](float v, int m, int t){return v/sums[t];});
 
-    M.dump();
-
     return M.Transpose();
 }
