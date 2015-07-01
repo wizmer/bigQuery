@@ -103,7 +103,9 @@ Matrix PDModel::GetPrediction( const float* const fluxP,
     Matrix smearP = betaF.Dot(fluxMatrixP.Dot(rgdtF_transposed));
     Matrix smearD = betaF.Dot(fluxMatrixD.Dot(rgdtF_transposed));
 
-    smearP.map([&smearD](float v, int b, int r){return v + smearD.get(b,r);});
+    smearP.map([&smearD](float v, int b, int r){
+            //std::cout << v << "\t" << smearD.get(b,r) << std::endl;
+                return v + smearD.get(b,r);});
 
     return smearP;
 }
@@ -121,5 +123,6 @@ float PDModel::GetLogLikelihood( const float* const fluxP,
 				  [this](float expected , int n, float m){
 				    return observed.get(n,m) * log(expected) - expected;
 				  });
-    return ret;
+
+   return ret;
 }

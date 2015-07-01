@@ -25,8 +25,11 @@ public:
     filename = name;
 
     if( mkdir(filename.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH) != 0){
-      std::cout << "Cannot create directory: " << filename << std::endl;
-      exit(-1);
+        int i = 0;
+        while( mkdir( (filename+generalUtils::toString(i)).c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH) != 0 ){
+            i++;
+        }
+        filename = filename+generalUtils::toString(i);
     }
         
     verbose = false;
@@ -59,6 +62,7 @@ public:
     
 
     //(model.model -> GetPrediction(&model.realValues[0],&model.realValues[nVar/2])).save(filename+"/predictedMatrix");
+
     for(int i = 0;i<nVar/2;i++){
       std::vector<float> fakeFluxP(nVar/2);
       std::vector<float> fakeFluxD(nVar/2);
@@ -223,7 +227,6 @@ private:
 struct DefaultProposalFunction{
   static void proposePoint(const std::vector<float> &previous_point, std::vector<float> &proposed_point, const int &nVar, const std::vector<float> &sigma){
     for(int i = 0;i<nVar;i++){
-	  
       proposed_point[i] = previous_point[i] + sigma[i] * normalDistrib(generator);
       while( proposed_point[i] < 0){
 	proposed_point[i] = previous_point[i] + sigma[i] * normalDistrib(generator);

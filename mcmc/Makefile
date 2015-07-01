@@ -1,13 +1,15 @@
 INCLUDE=-I./utils
 AMSSTATICLIBS := -L$(AMSWD)/lib/linuxx8664gcc5.34 -lntuple_slc6_PG
-LIBS=`root-config --cflags --libs ` 
+LIBS=`root-config --cflags --libs | sed 's/-lPhysics//g' | sed 's/-lGraf3d//g' | sed 's/-lPostscript//g' ` 
 OPTIMIZATION=-O3
 
-mcmc:	mcmc.cpp pd_model.o generalUtils.o
-	g++ ${OPTIMIZATION} ${INCLUDE} $^ -o mcmc -std=c++11 #${LIBS}
+all: mcmc reader test_model
 
-read:
-	g++ ${OPTIMIZATION} ${INCLUDE} reader.cpp -o reader  ${LIBS} -lRootUtils $(AMSSTATICLIBS) 
+mcmc:	mcmc.cpp pd_model.o generalUtils.o
+	g++ ${OPTIMIZATION} ${INCLUDE} $^ -o mcmc -std=c++11 
+
+reader:	reader.cpp
+	g++ ${OPTIMIZATION} -I${amsUtils}/include -L${amsUtils}/lib ${INCLUDE} reader.cpp -o reader  ${LIBS} -lRootUtils  -lStack -lGeneralUtils
 
 generalUtils.o: utils/generalUtils.cpp utils/generalUtils.hpp 
 	g++ ${OPTIMIZATION} ${INCLUDE} -c $< -std=c++11 
