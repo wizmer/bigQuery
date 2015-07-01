@@ -13,7 +13,7 @@ public:
         nRows(iN), nColumns(iM),data(nRows*nColumns,0){}
 
     inline int getNrows()   const { return nRows;    }
-    inline int getNcolumns() const { return nColumns; }
+    inline int getNcolums() const { return nColumns; }
 
     inline float &  at(int n, int m) { return data[n + nRows*m]; }
     inline float   get(int n, int m) const { return data[n + nRows*m]; }
@@ -29,12 +29,6 @@ public:
 
     Matrix Dot(const Matrix & rhs) const
     {
-        if( this->nColumns != rhs.nRows ){
-            std::cout << "Incompatible matrices size for product: ("
-                      << this->nRows << "," << this->nColumns << ") * (" << rhs.nRows << "," << rhs.nColumns << ")" << std::endl;
-            exit(-1);
-        }
-        
         Matrix ret(nRows, rhs.nColumns);
         for(int m = 0; m < rhs.nColumns; m++){
             for(int k = 0; k < nColumns; k++){
