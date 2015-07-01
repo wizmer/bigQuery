@@ -48,6 +48,14 @@ PDModel PDModel::FromCSVS(const std::string & betaFile, const std::string & rgdt
     Matrix rgdtF = getMatrixAndBins(rgdt, rT, rM);
     Matrix betaF = getMatrixAndBins(beta, bT, bM);
 
+    if( rM.size() != bM.size() ){
+        std::cout << "Measured rigidity binning and measured beta binning have different sizes !" << std::endl;
+        std::cout << "rM.size() : " << rM.size() << std::endl;
+        std::cout << "bM.size() : " << bM.size() << std::endl;
+        exit(-1);
+    }
+
+
     PDModel model(bT,bM,rT,rM);
     model.SetRigidityResolution(rgdtF);
     model.SetBetaResolution(betaF);
@@ -115,5 +123,6 @@ float PDModel::GetLogLikelihood( const float* const fluxP,
 				  [this](float expected , int n, float m){
 				    return observed.get(n,m) * log(expected) - expected;
 				  });
-    return ret;
+
+   return ret;
 }
