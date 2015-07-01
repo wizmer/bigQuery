@@ -15,16 +15,16 @@ public:
     inline int getNrows()   const { return nRows;    }
     inline int getNcolums() const { return nColumns; }
 
-    inline float &  at(int n, int m) { return data[n + nRows*m]; }
-    inline float   get(int n, int m) const { return data[n + nRows*m]; }
-    inline void    set(int n, int m, float val) { data[n + nRows*m] = val; }
+    inline float &  at(int row, int column) { return data[row + nRows*column]; }
+    inline float   get(int row, int column) const { return data[row + nRows*column]; }
+    inline void    set(int row, int column, float val) { data[row + nRows*column] = val; }
 
     template<typename T>
     void Fill(T matrix)
     {
-        for(int n = 0; n < nRows; n++) 
-            for(int m = 0; m < nColumns; m++) 
-                at(n,m) = matrix[n][m];
+        for(int iRow = 0; iRow < nRows; iRow++) 
+            for(int iColumn = 0; iColumn < nColumns; iColumn++) 
+                at(iRow,iColumn) = matrix[iRow][iColumn];
     }
 
     Matrix Dot(const Matrix & rhs) const
@@ -38,11 +38,11 @@ public:
         //}
 
         Matrix ret(nRows, rhs.nColumns);
-        for(int m = 0; m < rhs.nColumns; m++){
-            for(int k = 0; k < nColumns; k++){
-                float val = rhs.get(k,m);
+        for(int iRhsColumn = 0; iRhsColumn < rhs.nColumns; iRhsColumn++){
+            for(int iLhsColumn = 0; iLhsColumn < nColumns; iLhsColumn++){
+                float val = rhs.get(iLhsColumn,iRhsColumn);
                 for(int n = 0; n < nRows; n++){
-                    ret.at(n,m) += get(n,k)* val;
+                    ret.at(n,iRhsColumn) += get(n,iLhsColumn)* val;
                 }
             }
         }
@@ -52,35 +52,35 @@ public:
     Matrix Transpose() const
     {
         Matrix ret(nColumns, nRows);
-        for(int m = 0; m < nColumns; m++)
-            for(int n = 0; n < nRows; n++) 
-                ret.at(m,n) = get(n,m);
+        for(int iColumn = 0; iColumn < nColumns; iColumn++)
+            for(int iRow = 0; iRow < nRows; iRow++) 
+                ret.at(iColumn,iRow) = get(iRow,iColumn);
         return ret;
     }
 
     void map(std::function<float(float,int,int)> func)
     {
-        for(int m = 0; m < nColumns; m++)
-            for(int n = 0; n < nRows; n++) 
-                at(n,m) = func(get(n,m), n, m);
+        for(int iColumn = 0; iColumn < nColumns; iColumn++)
+            for(int iRow = 0; iRow < nRows; iRow++) 
+                at(iRow,iColumn) = func(get(iRow,iColumn), iRow, iColumn);
     }
 
     float applyAndSum(std::function<float(float,int,int)> func)
     {
         float ret = 0;
-        for(int n = 0; n < nRows; n++) {
-            for(int m = 0; m < nColumns; m++) {
-                ret += func(get(n,m), n, m);
+        for(int iRow = 0; iRow < nRows; iRow++) {
+            for(int iColumn = 0; iColumn < nColumns; iColumn++) {
+                ret += func(get(iRow,iColumn), iRow, iColumn);
             }
         }
         return ret;
     }
 
-    void dump() const
+    void dump()
     {
-        for(int n = 0; n < nRows; n++){
-            for(int m = 0; m < nColumns; m++){
-                std::cout << get(n,m) << "\t";
+        for(int iRow = 0; iRow < nRows; iRow++){
+            for(int iColumn = 0; iColumn < nColumns; iColumn++){
+                std::cout << get(iRow,iColumn) << "\t";
             }
             std::cout << std::endl;
         }
@@ -89,9 +89,9 @@ public:
   void save( std::string filename ){
       std::cout << "filename : " << filename << std::endl;
       std::ofstream f( filename );
-      for(int n = 0; n < nRows; n++){
-          for(int m = 0; m < nColumns; m++){
-              f << get(n,m) << ",";
+      for(int iRow = 0; iRow < nRows; iRow++){
+          for(int iColumn = 0; iColumn < nColumns; iColumn++){
+              f << get(iRow,iColumn) << ",";
           }
           f << std::endl;
       }
