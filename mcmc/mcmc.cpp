@@ -22,10 +22,13 @@ template <class Model, class ProposalFunction > class MCMC{
 public:
   MCMC(std::string name = "mcmc.mcmc" ){
     filename = name;
-
+    
     if( mkdir(filename.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH) != 0){
-      std::cout << "Cannot create directory: " << filename << std::endl;
-      exit(-1);
+        int i = 0;
+        while( mkdir( (filename+generalUtils::toString(i)).c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH) != 0 ){
+            i++;
+        }
+        filename = filename+generalUtils::toString(i);
     }
         
     verbose = false;
@@ -105,7 +108,7 @@ private:
   int chunkStepNumber;
   int seed;
   int nThreads;
-  static const int maxRAM = 2e9;
+  static const int maxRAM = 0.5e9;
 
   void saveMetaData(){
     std::ofstream myfile( filename+"/metadata.txt", std::ios::out);
@@ -337,6 +340,7 @@ struct RealisticToyModel{
     // #smoothness = -(alpha * secondDerivative).sum()
     //         return log #+ smoothness
 
+    std::cout << "log : " << log << std::endl;
     return log;
   }
 };
