@@ -27,15 +27,15 @@ Matrix getMatrixAndBins( std::fstream & fs,
     std::vector< std::vector<float> > data;
 
     getline(fs,line);
-    binsT = getRow(first, line);
+    binsM = getRow(first, line);
 
     while (getline(fs,line))
     {
         data.push_back(getRow(first, line));
-        binsM.push_back(first);
+        binsT.push_back(first);
     }
 
-    Matrix M(binsM.size()-1, binsT.size()-1);
+    Matrix M(binsT.size()-1, binsM.size()-1);
     M.Fill(data);
 
     std::vector<float> sums;
@@ -46,7 +46,7 @@ Matrix getMatrixAndBins( std::fstream & fs,
         sums.push_back(sum);
     }
 
-    M.map([&sums](float v, int m, int t){return v/sums[t];});
+    M.map([&sums](float v, int t, int m){return v/sums[t];});
 
-    return M.Transpose();
+    return M;
 }

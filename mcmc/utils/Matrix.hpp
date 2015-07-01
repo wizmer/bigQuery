@@ -29,6 +29,14 @@ public:
 
     Matrix Dot(const Matrix & rhs) const
     {
+        //if(nColumns != rhs.nRows)
+        //{
+        //    std::cout << "LHS (" <<     nRows << "," <<     nColumns << ")\n";
+        //    std::cout << "RHS (" << rhs.nRows << "," << rhs.nColumns << ")\n";
+        //    std::cout << "Dimensions mismatch!\n";
+        //    exit(1);
+        //}
+
         Matrix ret(nRows, rhs.nColumns);
         for(int m = 0; m < rhs.nColumns; m++){
             for(int k = 0; k < nColumns; k++){
