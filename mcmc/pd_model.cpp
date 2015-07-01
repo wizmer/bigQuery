@@ -1,6 +1,8 @@
 #include "pd_model.hpp"
+#include <sstream>
 #include <cmath>
 
+#include "utils/CSV.hpp"
 // source /afs/cern.ch/sw/lcg/contrib/gcc/4.8/x86_64-slc6/setup.sh
 
 // Kinematics
@@ -23,9 +25,9 @@ PDModel::PDModel(
    deltaP(bT.size()-1, rT.size()-1), deltaD(bT.size()-1, rT.size()-1),
    observed(bM.size()-1,rM.size()-1)
 {
-    for(int bBin=0; bBin < bT.size() - 1; bBin++)
+    for(int bBin=0; bBin < betaBinsT.size() - 1; bBin++)
     {
-        for(int rBin=0; rBin < rT.size() - 1; rBin++)
+        for(int rBin=0; rBin < rgdtBinsT.size() - 1; rBin++)
         {
             float bmin = betaBinsT[bBin], bmax = betaBinsT[bBin+1];
             float Rmin = rgdtBinsT[rBin], Rmax = rgdtBinsT[rBin+1];
@@ -36,6 +38,21 @@ PDModel::PDModel(
             deltaD.at(bBin, rBin) = getOverlap(bmin,bmax,bD1,bD2)/(bmax-bmin);
         }
     }
+}
+
+PDModel PDModel::FromCSVS(const std::string & betaFile, const std::string & rgdtFile )
+{
+    std::fstream beta(betaFile), rgdt(rgdtFile);
+    std::vector<float> rT, rM, bT, bM;
+
+    Matrix rgdtF = getMatrixAndBins(rgdt, rT, rM);
+    Matrix betaF = getMatrixAndBins(beta, bT, bM);
+
+    PDModel model(bT,bM,rT,rM);
+    model.SetRigidityResolution(rgdtF);
+    model.SetBetaResolution(betaF);
+
+    return model;
 }
 
 void PDModel::SetRigidityResolution(const Matrix & matrix)
@@ -88,8 +105,6 @@ Matrix PDModel::GetPrediction( const float* const fluxP,
 float PDModel::GetLogLikelihood( const float* const fluxP,
                                  const float* const fluxD  )
 {
-
-
     Matrix prediction = GetPrediction( fluxP, fluxD );
 
     //    prediction.dump();

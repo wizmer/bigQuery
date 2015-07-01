@@ -4,7 +4,7 @@ LIBS=`root-config --cflags --libs `
 OPTIMIZATION=-O3
 
 mcmc:	mcmc.cpp pd_model.o generalUtils.o
-	g++ ${OPTIMIZATION} ${INCLUDE} $^ -o mcmc -std=c++11 ${LIBS}
+	g++ ${OPTIMIZATION} ${INCLUDE} $^ -o mcmc -std=c++11 #${LIBS}
 
 read:
 	g++ ${OPTIMIZATION} ${INCLUDE} reader.cpp -o reader  ${LIBS} -lRootUtils $(AMSSTATICLIBS) 
