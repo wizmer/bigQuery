@@ -92,6 +92,11 @@ Matrix PDModel::GetPrediction( const float* const fluxP,
 {
     Matrix fluxMatrixP(deltaP), fluxMatrixD(deltaD);
 
+    fluxMatrixP.dump();
+    std::cout << "\n";
+    fluxMatrixD.dump();
+    std::cout << "\n";
+
     fluxMatrixP.map([&fluxP](float v, int b, int r){return v*fluxP[b];});
     fluxMatrixD.map([&fluxD](float v, int b, int r){return v*fluxD[b];});
 
