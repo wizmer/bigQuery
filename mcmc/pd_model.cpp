@@ -49,6 +49,7 @@ PDModel PDModel::FromCSVS(const std::string & betaFile, const std::string & rgdt
     Matrix rgdtF = getMatrixAndBins(rgdt, rT, rM);
     Matrix betaF = getMatrixAndBins(beta, bT, bM);
 
+
     PDModel model(bT,bM,rT,rM);
     model.SetRigidityResolution(rgdtF);
     model.SetBetaResolution(betaF);
@@ -84,6 +85,7 @@ void PDModel::SetBetaResolution    (const Matrix & matrix)
                   << (betaBinsT.size() - 1);
         exit(-1);
     }
+
     betaF = matrix.Transpose(); 
 }
 
@@ -92,19 +94,11 @@ Matrix PDModel::GetPrediction( const float* const fluxP,
                                const float* const fluxD  )
 {
     Matrix fluxMatrixP(deltaP), fluxMatrixD(deltaD);
-
-    deltaP.dump();exit(-1);
-
-
-    fluxMatrixP.map([&fluxP](float v, int b, int r){
-            //std::cout << v << "\t" << fluxP[b] << "\t" << b << std::endl;
-            return v*fluxP[b];});
-    fluxMatrixD.map([&fluxD](float v, int b, int r){return v*fluxD[b];});
-
-    fluxMatrixP.dump();
-    std::cout << "hey" << std::endl;
     
-    fluxMatrixP.Dot(rgdtF_transposed).dump();
+    fluxMatrixP.map([&fluxP](float v, int row, int r){
+            return v*fluxP[row];});
+
+    fluxMatrixD.map([&fluxD](float v, int b, int r){return v*fluxD[b];});
 
     Matrix smearP = betaF.Dot(fluxMatrixP.Dot(rgdtF_transposed));
     Matrix smearD = betaF.Dot(fluxMatrixD.Dot(rgdtF_transposed));

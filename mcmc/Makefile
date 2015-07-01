@@ -24,5 +24,5 @@ test_model: tests/test_model.cpp pd_model.o
 	g++ ${INCLUDE} -o $@ $^ -std=c++11 
 
 clean:
-	rm -f mcmc reader pd_model.o
+	rm -f mcmc reader pd_model.o test_model
 

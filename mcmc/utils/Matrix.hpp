@@ -76,7 +76,7 @@ public:
         return ret;
     }
 
-    void dump()
+    void dump() const
     {
         for(int n = 0; n < nRows; n++){
             for(int m = 0; m < nColumns; m++){

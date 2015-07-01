@@ -118,27 +118,18 @@ bool test_model1()
 
 void test_model3(){
     // Test that with identity resolution matrices, the output flux is the input flux
-    //    PDModel model = PDModel::FromCSVS("datasets/B_identity.csv", "datasets/R_identity.csv");
-    PDModel model = PDModel::FromCSVS("datasets/B_resolution.csv", "datasets/R_resolution.csv");
-
-    std::cout << "model.getBetaBinsM().size() : " << model.getBetaBinsM().size() << std::endl;
-    std::cout << "model.getBetaBinsT().size() : " << model.getBetaBinsT().size() << std::endl;
-    std::cout << "model.getRgdtBinsM().size() : " << model.getRgdtBinsM().size() << std::endl;
-    std::cout << "model.getRgdtBinsT().size() : " << model.getRgdtBinsT().size() << std::endl;
+    PDModel model = PDModel::FromCSVS("datasets/B_identity.csv", "datasets/R_identity.csv");
 
     int nVar = model.getBetaBinsT().size()-1;
 
     bool pass = true;
-    //for(int i = 0;i<nVar/2;i++){
-    for(int k = 0;k<1;k++){
-        std::vector<float> fakeFluxP(nVar/2,0);
-        std::vector<float> fakeFluxD(nVar/2,0);
+    for(int k = 0;k<nVar;k++){
+        std::vector<float> fakeFluxP(nVar,0);
+        std::vector<float> fakeFluxD(nVar,0);
+ 
         fakeFluxP[k] = 1;
         Matrix matrix = model.GetPrediction(&fakeFluxP[0],&fakeFluxD[0]);
-        std::cout << "matrix.getNcolums() : " << matrix.getNcolums() << std::endl;
-        std::cout << "matrix.getNrows() : " << matrix.getNrows() << std::endl;
-        matrix.dump();
-
+  
         if( matrix.getNrows() != model.getBetaBinsM().size()-1 ){
             std::cout << "wrong beta bin dimension" << std::endl;
         }
@@ -147,18 +138,18 @@ void test_model3(){
             std::cout << "wrong rigidity bin dimension" << std::endl;
         }
         
-        // for(int i = 0;i<matrix.getNcolums();i++){
-        //     for(int j = 0;j<matrix.getNrows();j++){
-        //         if( k == i && k == j && matrix.get(i,j) != 1 ) {
-        //             std::cout << i << "\t" << j << std::endl;
-        //             pass = false;
-        //         }
-        //         if( (k != j || k != i) && std::abs(matrix.get(i,j)) > 0.000001 ) {
-        //             std::cout << i << "\t" << j << "\t" << matrix.get(i,j) << std::endl;
-        //             pass = false;
-        //         }
-        //     }
-	// }
+        for(int i = 0;i<matrix.getNrows();i++){
+            for(int j = 0;j<matrix.getNcolums();j++){
+                if( k == i && k == j && std::abs(matrix.get(i,j)-1) > 0.002 ) {
+                    std::cout << i << "\t" << j << "\t" << matrix.get(i,j) << std::endl;
+                    pass = false;
+                }
+                if( (k != j || k != i) && std::abs(matrix.get(i,j)) > 0.002 ) {
+                    std::cout << i << "\t" << j << "\t" << matrix.get(i,j) << std::endl;
+                    pass = false;
+                }
+            }
+	}
     }
 
     if(!pass)
@@ -173,7 +164,7 @@ void test_model3(){
 
 int main(void)
 {
-    // test_model1();
+    test_model1();
     //test_model2();
     test_model3();
     return 0;

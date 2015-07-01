@@ -42,7 +42,7 @@ public:
                                  const std::vector<float> &fluxD  ){
         observed = GetPrediction( &fluxP[0], &fluxD[0]);
 
-        observed.dump();
+//        observed.dump();
     }
 };
 
