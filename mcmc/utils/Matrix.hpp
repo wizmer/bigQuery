@@ -86,16 +86,33 @@ public:
         }
     }
 
-  void save( std::string filename ){
-      std::cout << "filename : " << filename << std::endl;
-      std::ofstream f( filename );
-      for(int iRow = 0; iRow < nRows; iRow++){
-          for(int iColumn = 0; iColumn < nColumns; iColumn++){
-              f << get(iRow,iColumn) << ",";
-          }
-          f << std::endl;
-      }
-      f.close();
-  }
+    void save( std::string filename ){
+        std::cout << "filename : " << filename << std::endl;
+        std::ofstream f( filename );
+        for(int iRow = 0; iRow < nRows; iRow++){
+            for(int iColumn = 0; iColumn < nColumns; iColumn++){
+                f << get(iRow,iColumn) << ",";
+            }
+            f << std::endl;
+        }
+        f.close();
+    }
+
+    Matrix subMatrix(int _nRows, int _nColumns = 0, int _firstRow = 0, int _firstColumn = 0){
+        if( _nRows <= 0 ) _nRows = this -> nRows;
+        if( _nColumns <= 0 ) _nColumns = this -> nColumns;
+
+        if( _nRows + _firstRow > nRows || _nColumns + _firstColumn > nColumns ){
+            std::cout << "Cannot make a submatrix with such dimensions" << std::endl;
+            exit(-1);
+        }
+        Matrix output(_nRows, _nColumns);
+        for(int iRow = 0;iRow<_nRows;iRow++){
+            for(int iColumn = 0;iColumn<_nColumns;iColumn++){
+                output.at(iRow,iColumn) = this -> get(_firstRow + iRow, _firstColumn + iColumn);
+            }
+	}
+        return output;
+    }
 };
 

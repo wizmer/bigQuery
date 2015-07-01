@@ -9,7 +9,7 @@ mcmc:	mcmc.cpp pd_model.o generalUtils.o
 	g++ ${OPTIMIZATION} ${INCLUDE} $^ -o mcmc -std=c++11 
 
 reader:	reader.cpp
-	g++ ${OPTIMIZATION} -I${amsUtils}/include -L${amsUtils}/lib ${INCLUDE} reader.cpp -o reader  ${LIBS} -lRootUtils  -lStack -lGeneralUtils
+	g++ ${OPTIMIZATION} -std=c++11  -I${amsUtils}/include -L${amsUtils}/lib ${INCLUDE} reader.cpp -o reader  ${LIBS} -lRootUtils  -lStack -lGeneralUtils
 
 generalUtils.o: utils/generalUtils.cpp utils/generalUtils.hpp 
 	g++ ${OPTIMIZATION} ${INCLUDE} -c $< -std=c++11 

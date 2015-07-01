@@ -118,12 +118,13 @@ bool test_model1()
 
 void test_model3(){
     // Test that with identity resolution matrices, the output flux is the input flux
-    PDModel model = PDModel::FromCSVS("datasets/B_identity.csv", "datasets/R_identity.csv");
+    PDModel model = PDModel::FromCSVS("datasets/B_identity.csv", "datasets/R_identity.csv",10);
 
     int nVar = model.getBetaBinsT().size()-1;
 
     bool pass = true;
-    for(int k = 0;k<nVar;k++){
+    //for(int k = 0;k<nVar;k++){
+    for(int k = 0;k<1;k++){
         std::vector<float> fakeFluxP(nVar,0);
         std::vector<float> fakeFluxD(nVar,0);
  
@@ -138,6 +139,7 @@ void test_model3(){
             std::cout << "wrong rigidity bin dimension" << std::endl;
         }
         
+        matrix.dump();
         for(int i = 0;i<matrix.getNrows();i++){
             for(int j = 0;j<matrix.getNcolums();j++){
                 if( k == i && k == j && std::abs(matrix.get(i,j)-1) > 0.002 ) {

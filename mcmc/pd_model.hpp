@@ -20,7 +20,7 @@ public:
     PDModel( const std::vector<float> & bT, const std::vector<float> & bM, 
              const std::vector<float> & rT, const std::vector<float> & rM  );
 
-    static PDModel FromCSVS(const std::string & betaFile, const std::string & rgdtFile );
+    static PDModel FromCSVS(const std::string & betaFile, const std::string & rgdtFile, int maxTrueBinNumber = 0 );
 
     void SetRigidityResolution(const Matrix & matrix);
     void SetBetaResolution    (const Matrix & matrix);
@@ -42,7 +42,6 @@ public:
                                  const std::vector<float> &fluxD  ){
         observed = GetPrediction( &fluxP[0], &fluxD[0]);
 
-//        observed.dump();
     }
 };
 

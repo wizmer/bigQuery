@@ -94,10 +94,39 @@ bool test_copy()
 
 }
 
+bool test_subMatrix(){
+    bool pass = true;
+    Matrix A(4,3);
+    V2D data = { {1,2,3},
+                 {4,5,6},
+                 {7,8,9},
+                 {1,2,3} };
+    A.Fill(data);
+    Matrix B = A.subMatrix(3,2,1,1);
+    if( B.getNrows() != 3) pass = false;
+    if( B.getNcolums() != 2) pass = false;
+    if( B.get(0,0) != 5 ) pass = false;
+    if( B.get(0,1) != 6 ) pass = false;
+    if( B.get(1,0) != 8 ) pass = false;
+    if( B.get(1,1) != 9 ) pass = false;
+    if( B.get(2,0) != 2 ) pass = false;
+    if( B.get(2,1) != 3 ) pass = false;
+
+    if(!pass)
+        {
+            std::cout << __FUNCTION__ << " failed\n";
+            std::cout << "\n";
+        }
+    else std::cout << __FUNCTION__ << " passed.\n";
+
+    return pass;
+
+}
 int main(void)
 {
     test_dot_1();
     test_dot_2();
     test_copy();
+    test_subMatrix();
     return 0;
 }
