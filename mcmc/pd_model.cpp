@@ -36,6 +36,7 @@ PDModel::PDModel(
 
             deltaP.at(bBin, rBin) = getOverlap(bmin,bmax,bP1,bP2)/(bmax-bmin);
             deltaD.at(bBin, rBin) = getOverlap(bmin,bmax,bD1,bD2)/(bmax-bmin);
+            //if( bBin == betaBinsTs
         }
     }
 }
@@ -92,10 +93,18 @@ Matrix PDModel::GetPrediction( const float* const fluxP,
 {
     Matrix fluxMatrixP(deltaP), fluxMatrixD(deltaD);
 
+    deltaP.dump();exit(-1);
+
+
     fluxMatrixP.map([&fluxP](float v, int b, int r){
             //std::cout << v << "\t" << fluxP[b] << "\t" << b << std::endl;
             return v*fluxP[b];});
     fluxMatrixD.map([&fluxD](float v, int b, int r){return v*fluxD[b];});
+
+    fluxMatrixP.dump();
+    std::cout << "hey" << std::endl;
+    
+    fluxMatrixP.Dot(rgdtF_transposed).dump();
 
     Matrix smearP = betaF.Dot(fluxMatrixP.Dot(rgdtF_transposed));
     Matrix smearD = betaF.Dot(fluxMatrixD.Dot(rgdtF_transposed));
