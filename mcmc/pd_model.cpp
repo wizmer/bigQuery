@@ -75,7 +75,7 @@ void PDModel::SetRigidityResolution(const Matrix & matrix)
                   << (rgdtBinsT.size() - 1);
         exit(-1);
     }
-    rgdtF_transposed = matrix.Transpose(); 
+    rgdtF_transposed = matrix; 
 }
 
 
@@ -91,8 +91,9 @@ void PDModel::SetBetaResolution    (const Matrix & matrix)
                   << (betaBinsT.size() - 1);
         exit(-1);
     }
-    betaF = matrix; 
+    betaF = matrix.Transpose(); 
 }
+
 
 Matrix PDModel::GetPrediction( const float* const fluxP,
                                const float* const fluxD  )
