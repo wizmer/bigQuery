@@ -118,7 +118,8 @@ bool test_model1()
 
 void test_model3(){
     // Test that with identity resolution matrices, the output flux is the input flux
-    PDModel model = PDModel::FromCSVS("datasets/B_identity.csv", "datasets/R_identity.csv");
+    //    PDModel model = PDModel::FromCSVS("datasets/B_identity.csv", "datasets/R_identity.csv");
+    PDModel model = PDModel::FromCSVS("datasets/B_resolution.csv", "datasets/R_resolution.csv");
 
     std::cout << "model.getBetaBinsM().size() : " << model.getBetaBinsM().size() << std::endl;
     std::cout << "model.getBetaBinsT().size() : " << model.getBetaBinsT().size() << std::endl;
@@ -134,10 +135,17 @@ void test_model3(){
         std::vector<float> fakeFluxD(nVar/2,0);
         fakeFluxP[k] = 1;
         Matrix matrix = model.GetPrediction(&fakeFluxP[0],&fakeFluxD[0]);
+        std::cout << "matrix.getNcolums() : " << matrix.getNcolums() << std::endl;
+        std::cout << "matrix.getNrows() : " << matrix.getNrows() << std::endl;
         matrix.dump();
-        // if( matrix.getNrows() != model.getBetaBinsM().size()-1 ){
-        //     std::cout << "wrong bin dimension" << std::endl;
-        // }
+
+        if( matrix.getNrows() != model.getBetaBinsM().size()-1 ){
+            std::cout << "wrong beta bin dimension" << std::endl;
+        }
+
+        if( matrix.getNcolums() != model.getRgdtBinsM().size()-1 ){
+            std::cout << "wrong rigidity bin dimension" << std::endl;
+        }
         
         // for(int i = 0;i<matrix.getNcolums();i++){
         //     for(int j = 0;j<matrix.getNrows();j++){
