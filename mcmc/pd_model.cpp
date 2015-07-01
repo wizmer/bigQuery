@@ -48,14 +48,6 @@ PDModel PDModel::FromCSVS(const std::string & betaFile, const std::string & rgdt
     Matrix rgdtF = getMatrixAndBins(rgdt, rT, rM);
     Matrix betaF = getMatrixAndBins(beta, bT, bM);
 
-    if( rM.size() != bM.size() ){
-        std::cout << "Measured rigidity binning and measured beta binning have different sizes !" << std::endl;
-        std::cout << "rM.size() : " << rM.size() << std::endl;
-        std::cout << "bM.size() : " << bM.size() << std::endl;
-        exit(-1);
-    }
-
-
     PDModel model(bT,bM,rT,rM);
     model.SetRigidityResolution(rgdtF);
     model.SetBetaResolution(betaF);
@@ -100,13 +92,17 @@ Matrix PDModel::GetPrediction( const float* const fluxP,
 {
     Matrix fluxMatrixP(deltaP), fluxMatrixD(deltaD);
 
-    fluxMatrixP.map([&fluxP](float v, int b, int r){return v*fluxP[b];});
+    fluxMatrixP.map([&fluxP](float v, int b, int r){
+            //std::cout << v << "\t" << fluxP[b] << "\t" << b << std::endl;
+            return v*fluxP[b];});
     fluxMatrixD.map([&fluxD](float v, int b, int r){return v*fluxD[b];});
 
     Matrix smearP = betaF.Dot(fluxMatrixP.Dot(rgdtF_transposed));
     Matrix smearD = betaF.Dot(fluxMatrixD.Dot(rgdtF_transposed));
 
-    smearP.map([&smearD](float v, int b, int r){return v + smearD.get(b,r);});
+    smearP.map([&smearD](float v, int b, int r){
+            //std::cout << v << "\t" << smearD.get(b,r) << std::endl;
+                return v + smearD.get(b,r);});
 
     return smearP;
 }

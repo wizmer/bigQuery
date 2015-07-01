@@ -110,6 +110,7 @@ protected:
       for(int i = 0; i<n;i++){
         int index = (int)(i/(float)n * N);
         sum +=  trace[iParam][index];
+        //        std::cout << trace[iParam][index] << "\t" << iParam << "\t" << index << std::endl;
         sum2 += pow(trace[iParam][index], 2);
         //std::cout << "trace["<<iParam<<"]["<< index << "] = " << trace[iParam][index] << std::endl;
       }
@@ -243,28 +244,33 @@ int main(int argc, char** argv){
   TApplication app("app",&argc,argv,0,-1);
 
   int c;
-  while((c =  getopt(argc, argv, ":a:b:c")) != EOF)
+  std::string dirname = "test";
+  std::cout << "argv[1] : " << argv[1] << std::endl;
+  if( argc > 1 ) dirname = argv[1];
+
+  ReaderBase *r = NULL;
+
+  while((c =  getopt(argc, argv, "t:")) != EOF)
     {
       switch (c)
         {
-        case 'a':
-          std::cout << optarg << std::endl;
-          break;
-        case 'b':
-          std::cout << optarg << std::endl;
+        case 't':
+            std::string a(optarg);
+            if( a == "full" ){
+                r = new FullReader(dirname);
+            } else if( a == "lik" ){
+                r = new LikelihoodTracer(dirname);
+            }
           break;
         }
     }
     
   std::clock_t start = std::clock();
 
-  std::string dirname = "test";
-  if( argc > 1 ) dirname = argv[1];
+  if( r == NULL ) r = new FullReader(dirname);
 
-  FullReader r(dirname);
-  //   LikelihoodTracer r(dirname);
   //    r.setMaxSteps(1000);
-  r.readAll();
+  r->readAll();
 
   std::cout << "Time : " << (std::clock() - start) / (float)(CLOCKS_PER_SEC / 1000) << " ms" << std::endl;
   app.Run();
