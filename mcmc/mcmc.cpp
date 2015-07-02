@@ -122,6 +122,13 @@ private:
             myfile << "initialPoints_" << i << " " << initialConditions[i] << std::endl;
             myfile << "realValues_" << i << " " << realValues[i] << std::endl;
         }
+       
+        auto bins = model.model.getBetaBinsT() ;
+        for(int i = 0; i < bins.size(); i++) 
+            myfile << "bin_" << i << " " << bins[i] << std::endl; 
+
+    
+
         myfile.close();
     }
 
