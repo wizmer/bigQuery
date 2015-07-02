@@ -195,6 +195,9 @@ void PDModel::LoadObservedDataFromFile(const std::string & fname)
             row.push_back(v);
         }
         data.push_back(row);
-        std::cout << "\n";
     }
+
+    Matrix obs(betaBinsM.size()-1,rgdtBinsM.size()-1);
+    obs.Fill(data);
+    observed = obs;
 }

@@ -10,7 +10,7 @@ struct RealisticToyModel: public PDModel
         PDModel(PDModel::FromCSVS("datasets/B_resolution.csv", "datasets/R_resolution.csv",16))
     {
         // Set true values of the model
-        for( int i = 0; i < model.getBetaBinsT().size() - 1; i++){
+        for( int i = 0; i < getBetaBinsT().size() - 1; i++){
             realValues.fluxP.push_back(10000);
             realValues.fluxD.push_back(10000);
         }
@@ -19,7 +19,7 @@ struct RealisticToyModel: public PDModel
         initialConditions = realValues;
 
         // Generate fake data
-        model.GenerateToyObservedData(realValues);
+        GenerateToyObservedData(realValues);
     }
 };
 

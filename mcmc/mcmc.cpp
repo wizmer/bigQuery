@@ -22,11 +22,11 @@ std::normal_distribution<float> normalDistrib; // a random gaussian generator
 class ProposalFunction {
     std::vector<float> sigmaP, sigmaD;
 public: 
-    typedef PD_Model::SearchSpace Space;
+    typedef PDModel::SearchSpace Space;
     ProposalFunction(const Space & initialPoint)
     {
-        for(auto v : initialPoint.fluxP) sigmaP.push_back(v);
-        for(auto v : initialPoint.fluxD) sigmaD.push_back(v);
+        for(auto v : initialPoint.fluxP) sigmaP.push_back(sqrt(v));
+        for(auto v : initialPoint.fluxD) sigmaD.push_back(sqrt(v));
     }
 
     Space proposePoint(const Space &previous_point)
@@ -44,13 +44,14 @@ public:
     }
 };
 
-ostream& operator<<(ostream& os, const PD_Model::SearchSpace& point)
+std::ostream& operator<<(std::ostream& os, const PDModel::SearchSpace& point)
 {
     os << "fluxP ";
-    for(v : point.fluxP) os << v << " ";
+    for(auto v : point.fluxP) os << v << " ";
     os << "\n";
     os << "fluxD ";
-    for(v : point.fluxD) os << v << " ";
+    for(auto v : point.fluxD) os << v << " ";
+    return os;
 }
 
 
@@ -114,9 +115,10 @@ private:
 
     Model model;
 
-    Model::SearchSpace realValues;
-    Model::SearchSpace current_point;
-    Model::SearchSpace initialConditions;
+    typedef typename Model::SearchSpace Space;
+    Space realValues;
+    Space current_point;
+    Space initialConditions;
 
     ProposalFunction proposalFunction;
 
@@ -142,10 +144,9 @@ private:
         myfile << "realValues"      << std::endl;
         myfile << realValues        << std::endl;
       
-        myfile << "bins " 
+        myfile << "bins " ;
         for(auto v :  model.getBetaBinsT()) myfile << v << " "; 
         myfile << std::endl;
-
 
         myfile.close();
     }
@@ -178,7 +179,7 @@ private:
         chunkNumber++;
     }
 
-    void updateStep(const Model::SearchSpace &proposed_point, const float &proposed_log_likelihood)
+    void updateStep(const Space &proposed_point, const float &proposed_log_likelihood)
     {
         if(verbose) std::cout << "accepted" << std::endl;
 
@@ -220,6 +221,10 @@ private:
             float the_likelihood_ratio = exp(proposed_log_likelihood-current_log_likelihood);
 
             if( verbose ){
+
+                std::cout << "fluxP "; for(auto v: proposed_point.fluxP) std::cout << v << " "; std::cout << "\n";
+                std::cout << "fluxD "; for(auto v: proposed_point.fluxD) std::cout << v << " "; std::cout << "\n";
+
                 std::cout << "current_log_likelihood : " << current_log_likelihood << std::endl;
                 std::cout << "proposed_log_likelihood : " << proposed_log_likelihood << std::endl;
                 std::cout << "the_likelihood_ratio : " << the_likelihood_ratio << std::endl;
