@@ -15,6 +15,7 @@
 
 #include "generalUtils.hpp"
 #include "pd_model.hpp"
+#include "realisticToyModel.hpp"
 
 std::default_random_engine generator;
 std::normal_distribution<float> normalDistrib; // a random gaussian generator
@@ -51,8 +52,12 @@ public:
 
         for(int i = 0;i<nVar;i++){
             trace.push_back( std::vector<float>(chunkSize) );
-            sigma.push_back( sqrt( initialConditions[i] ) );
+            sigma.push_back( sqrt( initialConditions[i] )/100. );
         }
+
+        for(int i = 0;i<sigma.size();i++){
+            std::cout << "sigma[i] : " << sigma[i] << std::endl;
+	}
 
         // construct a trivial random generator engine from a time-based seed:
         seed = std::chrono::system_clock::now().time_since_epoch().count();
@@ -71,6 +76,11 @@ public:
         }
 
     }
+
+    void setRegularization( float _alpha ){
+        model.setRegularization(_alpha);
+    }
+    
 
     void run(){
         loop();
@@ -109,7 +119,7 @@ private:
 
     int chunkStepNumber;
     int nThreads;
-    static const int maxRAM = 2e9;
+    static const int maxRAM = 1e9;
 
     void saveMetaData(){
         std::ofstream myfile( filename+"/metadata.txt", std::ios::out);
@@ -118,10 +128,9 @@ private:
         myfile << "chunkSize " << chunkSize << std::endl;
         myfile << "seed " << seed << std::endl;
         myfile << "isToyMC " << model.isToyMC << std::endl;
-        for(int i = 0;i<nVar;i++){
-            myfile << "initialPoints_" << i << " " << initialConditions[i] << std::endl;
-            myfile << "realValues_" << i << " " << realValues[i] << std::endl;
-        }
+        for(int i = 0;i<nVar;i++)  myfile << "initialPoints_" << i << " " << initialConditions[i] << std::endl;
+        for(int i = 0;i<realValues.size();i++) myfile << "realValues_" << i << " " << realValues[i] << std::endl;
+
        
         auto bins = model.model.getBetaBinsT() ;
         for(int i = 0; i < bins.size(); i++) 
@@ -228,6 +237,8 @@ private:
         std::cout << "chunkStepNumber : " << chunkStepNumber << std::endl;
         if( chunkStepNumber > 0 ) saveChunk();
     }
+
+
 };
 
 
@@ -274,47 +285,6 @@ void fillMatrixFromPandasFile( Matrix &matrix, std::string filename){
     }
 }
 
-struct RealisticToyModel
-{
-    PDModel model;
-    std::vector<float> initialConditions;
-    std::vector<float> realValues;
-    static const bool isToyMC = true;
-
-    RealisticToyModel():
-        model(PDModel::FromCSVS("datasets/B_resolution.csv", "datasets/R_resolution.csv",16))
-    {
-        // Set true values of the model
-        std::vector<float> toyFluxP, toyFluxD;
-        for( int i = 0; i < model.getBetaBinsT().size() - 1; i++){
-            toyFluxP.push_back(10000);
-            toyFluxD.push_back(10000);
-        }
-
-        realValues = toyFluxP;
-        realValues.insert(realValues.end(), toyFluxD.begin(), toyFluxD.end());
-
-        // Set initial conditions on true value
-        initialConditions = realValues;
-
-        // Generate fake data
-        model.GenerateToyObservedData(toyFluxP, toyFluxD);
-    }
-
-    float getLogLikelihood(const std::vector<float> &point, const std::vector<float> data, const int &nVar){
-        // for(int i = 0;i<point.size();i++){
-        //std::cout << "point["<<i<<"] : " << point[i] << std::endl;
-        // }
-        float log = model.GetLogLikelihood( &point[0], &point[initialConditions.size()/2] );
-        // # Didn't figure that out yet
-        // #firstDerivative = np.diff(np.log(value))
-        // #secondDerivative = np.fabs(np.diff(firstDerivative))
-        // #smoothness = -(alpha * secondDerivative).sum()
-        //         return log #+ smoothness
-
-        return log;
-    }
-};
 
 
 
@@ -323,8 +293,9 @@ int main(int argc, char** argv){
     int nStep = 0;
     std::string name = "test";
     bool verbose = false;
+    float alphaRegularization = 1;
 
-    while((c =  getopt(argc, argv, "n:f:v")) != EOF)
+    while((c =  getopt(argc, argv, "n:f:v:a:")) != EOF)
         {
             switch (c)
                 {
@@ -337,12 +308,17 @@ int main(int argc, char** argv){
                 case 'v':
                     verbose = true;
                     break;
+                case 'a':
+                    alphaRegularization = generalUtils::stringTo<float>(optarg);
+                    break;
                 }
         }
 
     std::clock_t start = std::clock();
 
-    MCMC<RealisticToyModel, DefaultProposalFunction > a(name);
+    //    MCMC<RealisticToyModel, DefaultProposalFunction > a(name);
+    MCMC<RealDataModel, DefaultProposalFunction > a(name);
+    a.setRegularization(alphaRegularization);
     a.setVerbose(verbose);
     if( nStep > 0 ) a.setSteps(nStep);
     a.run();

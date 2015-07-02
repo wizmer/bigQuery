@@ -1,6 +1,8 @@
 #include "../pd_model.hpp"
 #include <cmath>
 
+#include "realisticToyModel.hpp"
+
 typedef std::vector<std::vector<float>> V2D;
 
 bool test_model1()
@@ -196,11 +198,61 @@ void test_model4(){
     
 }
 
+void test_computeDerivative(){
+    bool pass = true;
+
+    std::vector< std::pair<float, float> > f;
+    f.push_back(std::pair<float, float>(std::log10(10)  ,10));
+    f.push_back(std::pair<float, float>(std::log10(1000),100));
+    f.push_back(std::pair<float, float>(std::log10(1)   ,1000));
+
+    std::vector<std::pair<float,float>> firstDerivative = RealisticToyModel::getLogDerivative(f);
+    if( firstDerivative[0].first !=  2 ) {
+        std::cout << "firstDerivative[0].first : " << firstDerivative[0].first << std::endl;
+        pass = false;
+    }
+
+    if( firstDerivative[1].first != -3 ){
+        std::cout << "firstDerivative[1].first : " << firstDerivative[1].first << std::endl;
+        pass = false;
+    }
+    
+    std::vector<std::pair<float,float>> secondDerivative = RealisticToyModel::getLogDerivative(firstDerivative);
+
+    if( secondDerivative[0].first != -5 ){
+        std::cout << "secondDerivative[0].first : " << secondDerivative[0].first << std::endl;
+        pass = false;
+    }
+    
+    std::vector< std::pair<float, float> > powerLaw;
+    int N = 5;
+    float E = 1;
+    for(int i = 0;i<N;i++){
+        powerLaw.push_back(std::pair<float, float>(std::log10(pow(E,-2.7)) , E));
+        E *= 10;
+    }
+
+    // Testing that a power law returns 0
+    secondDerivative = RealisticToyModel::getLogDerivative( RealisticToyModel::getLogDerivative(powerLaw) );
+    float smoothness = 0;
+    for(int i = 0;i<secondDerivative.size();i++){
+        smoothness += std::abs(secondDerivative[i].first);
+    }
+    if( std::abs(smoothness) > 1e-6 ) pass = false;
+
+    if(!pass){
+        std::cout << __FUNCTION__ << " \033[1;31mFAILED\033[0m:\n";
+        std::cout << "\n";
+    } else std::cout << __FUNCTION__ << " \033[1;32mPASSED\033[0m.\n";
+
+}
+
 int main(void)
 {
     test_model1();
     //test_model2();
     test_model3();
     test_model4();
+    test_computeDerivative();
     return 0;
 }

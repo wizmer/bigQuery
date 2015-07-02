@@ -5,6 +5,7 @@
 #include <ctime>
 
 #include "utils/CSV.hpp"
+
 // source /afs/cern.ch/sw/lcg/contrib/gcc/4.8/x86_64-slc6/setup.sh
 
 // Kinematics
@@ -190,4 +191,23 @@ float PDModel::GetLogLikelihood( const float* const fluxP,
                                        });
 
     return ret;
+}
+
+void PDModel::LoadObservedDataFromFile(const std::string & fname)
+{
+    std::fstream fs(fname);
+    std::vector<std::vector<float> > data;
+    for(int b = 0; b < betaBinsM.size()-1; b++)
+        {
+            std::vector<float> row;
+            for(int r = 0; r < rgdtBinsM.size()-1; r++)
+                {
+                    float v = 0;
+                    fs >> v;
+                    row.push_back(v);
+                }
+            data.push_back(row);
+        }
+
+    observed.Fill<std::vector<std::vector<float> > >(data);
 }

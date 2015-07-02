@@ -41,6 +41,8 @@ public:
     Matrix GetPrediction( const float* const fluxP,
                           const float* const fluxD  );
 
+    void LoadObservedDataFromFile(const std::string & fname);
+
     // Perform a linear combination of base matrices
     Matrix GetPredictionFast( const float* const fluxP,
                           const float* const fluxD  );
@@ -52,6 +54,10 @@ public:
                                  const std::vector<float> &fluxD  ){
         observed = GetPrediction( &fluxP[0], &fluxD[0]);
 
+        std::cout << "observed.getNrows() : " << observed.getNrows() << std::endl;
+        std::cout << "observed.getNcolums() : " << observed.getNcolums() << std::endl;
+
     }
+
 };
 

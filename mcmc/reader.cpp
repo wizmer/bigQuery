@@ -9,9 +9,11 @@
 #include "TApplication.h"
 #include "TF1.h"
 #include "TGraphErrors.h"
+#include "TKey.h"
 
 #include "generalUtils.hpp"
 #include "Stack.hpp"
+
 
 class ReaderBase{
 public:
@@ -20,13 +22,37 @@ public:
         maxSteps = 0;
         nPlotPerCanvas = 4;
         isToyMC = false;
+        
+        isAlreadyAnalysed = generalUtils::fileExists(filename+"/.ana");
     }
 
     void setMaxSteps(int _maxSteps){
         maxSteps = _maxSteps;
     }
 
+    void rePlotOffset(){
+        std::vector<std::string> files = generalUtils::splitIntoLines( generalUtils::exec("find "+ filename + " | grep fullCan"));
+        for(int i = 0;i<files.size();i++){
+            std::cout << "files[i] : " << files[i] << std::endl;
+            TFile* file = new TFile( files[i].c_str() );
+            TKey*k = (TKey*)(file -> GetListOfKeys() -> At(0));
+            std::cout << "k : " << k << std::endl;
+            TCanvas* can = (TCanvas*) k -> ReadObj();
+            can -> Draw();
+	}
+    }
+
+    void rePlotFull(){
+
+    }
+
+    void rePlotAll(){
+        rePlotOffset();
+        rePlotFull();
+    }
+
     void readAll(){
+        if( isAlreadyAnalysed ) return rePlotAll();
         init();
         // Extract number of variables
 
@@ -42,7 +68,6 @@ public:
             }
                 
         }
-
         plot();
     }
     
@@ -80,7 +105,6 @@ protected:
         }
         nVar = metadata["nVar"];
         isToyMC = metadata["isToyMC"];
-
         if( maxSteps > 0 && metadata["nStep"] > maxSteps ) metadata["nStep"] = maxSteps;
     }
     
@@ -125,7 +149,6 @@ protected:
             firstRead[iParam] = false;
 
             initHisto(iParam);
-
         }
     }
 
@@ -158,6 +181,7 @@ protected:
     bool *firstRead;
     std::pair<int,int> *borne;
     bool isToyMC;
+    bool isAlreadyAnalysed;
 };
 
 class FullReader: public ReaderBase{
@@ -168,18 +192,30 @@ protected:
     virtual void plot(){
         std::string resultDir = filename+"Ana/";
         generalUtils::makeFolder(resultDir);
-        std::map< int, Stack* > stackMap;
-        TGraphErrors* grOffset;
+        generalUtils::exec("touch " + resultDir + ".ana");
 
-        if(isToyMC) grOffset = new TGraphErrors();
+        std::map< int, Stack* > stackMap;
+        TGraphErrors* grOffset[2];
+
+        enum Species{
+            P,
+            D
+        } species;
+
+        int graphCounter[2] = {0,0};
+
+        if(isToyMC){
+            grOffset[P] = new TGraphErrors();
+            grOffset[D] = new TGraphErrors();
+        }
 
         if( nPlotPerCanvas > nVar ) nPlotPerCanvas = nVar;
         for( int iCan = 0; iCan < nVar/nPlotPerCanvas+1*(nVar%nPlotPerCanvas != 0); iCan++){
-            TCanvas* can = new TCanvas();
+            TCanvas* can = new TCanvas(Form("fullCan_%i",iCan));
             can -> Divide( nPlotPerCanvas, nPlotPerCanvas );
             for(int iPlot = 0;iPlot < nPlotPerCanvas;iPlot++){
                 int iVar = iPlot+iCan*nPlotPerCanvas;
-                if( iVar >= nVar ) return;
+                if( iVar >= nVar ) break;
                 for(int jPlot = 0; jPlot <= iPlot; jPlot++){
                     int jVar = jPlot+iCan*nPlotPerCanvas;
                     can -> cd( 1+iPlot*nPlotPerCanvas+jPlot );
@@ -189,29 +225,38 @@ protected:
                         stackMap[iVar] -> push_back( h[iVar] );
                         std::cout << "h[iVar] : " << h[iVar]->GetName() << std::endl;
                         
-                        TF1* f = new TF1("f","[0]*exp(-pow(([1]-x)/[2],2))",8000,12000);
+                        float mean = h[iVar] -> GetMean();
+                        float sigma = h[iVar] -> GetStdDev();
+                        TF1* f = new TF1("f","[0]*exp(-pow(([1]-x)/[2],2))", mean - 2*sigma, mean + 2*sigma);
                         f -> SetParameter(0, h[iVar] -> GetMaximum() );
-                        f -> SetParameter(1, h[iVar] -> GetMean() );
-                        f -> SetParameter(2, h[iVar] -> GetStdDev() );
+                        f -> SetParameter(1, mean );
+                        f -> SetParameter(2, sigma );
                         h[iVar] -> Fit(f,"R0");
                         stackMap[iVar] -> push_back(f);
-
                         if(isToyMC){
                             stackMap[iVar] -> pushVerticalLine( metadata[ Form("realValues_%i",iVar) ] );
-                            grOffset -> SetPoint(iVar,iVar, f-> GetParameter(1) - metadata[ Form("realValues_%i",iVar) ]);
+                            //if( std::abs( f-> GetParameter(1) - metadata[ Form("realValues_%i",iVar) ] ) < 1000 ){
+                            if( true ){
+                                Species s = iVar<nVar/2?P:D;
+                                grOffset[s] -> SetPoint(graphCounter[s],iVar-(nVar/2)*(iVar>=nVar/2), f-> GetParameter(1) - metadata[ Form("realValues_%i",iVar) ]);
+                                grOffset[s] -> SetPointError(graphCounter[s]++,0, f-> GetParameter(2));
+                            }
                         }
                         
                     } else stackMap[iVar] -> push_back( h2[ std::pair<int, int>(iVar,jVar) ] );
                     stackMap[iVar] -> draw(gPad);
                 }
             }
-            can -> SaveAs( (resultDir+can->GetName()).c_str() );
+            can -> SaveAs( (resultDir+can->GetName()+".root").c_str() );
         }
 
+        std::cout << "isToyMC : " << isToyMC << std::endl;
         if( isToyMC ){
             Stack* st = new Stack("offset");
-            st -> push_back(grOffset);
+            st -> push_back(grOffset[P],"proton");
+            st -> push_back(grOffset[D],"deuton");
             st -> draw();
+            st -> write((resultDir+"offset"),"root");
         }
     }
 
@@ -269,6 +314,34 @@ protected:
     }
 };
 
+class Tracer: public ReaderBase{
+public:
+    Tracer(std::string _filename): ReaderBase(_filename){};
+
+protected:
+    virtual void plot(){
+        std::vector<TH1*> traces;
+        for(int iParam = 0;iParam<nVar;iParam++){
+            traces.push_back(h[iParam]);
+        }
+
+        smartPlot( traces );
+
+    }
+
+    virtual void fillHistos(std::string fname, int iParam){
+        if(iParam == nVar ) return;
+
+        for(int k = 0;k < metadata["nStep"] ;k++) h[ iParam ] -> Fill( k, trace[iParam][k] );
+        //std::cout << "trace[iParam][metadata[nStep]-1] : " << trace[iParam][(int)(metadata["nStep"]-1)] << std::endl;
+    }
+
+    void initHisto(int iParam){
+        if(iParam == nVar) return;
+        h[iParam] = new TH2F(Form("h_%i",iParam),Form("h_%i",iParam), 1000,0,metadata["nStep"],100,borne[iParam].first,borne[iParam].second);
+    }
+};
+
 
 int main(int argc, char** argv){
     TApplication app("app",&argc,argv,0,-1);
@@ -290,7 +363,10 @@ int main(int argc, char** argv){
                         r = new FullReader(dirname);
                     } else if( a == "lik" ){
                         r = new LikelihoodTracer(dirname);
+                    } else if( a == "trace" ){
+                        r = new Tracer(dirname);
                     }
+
                     break;
                 }
         }
