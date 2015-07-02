@@ -198,7 +198,6 @@ private:
 
             float proposed_log_likelihood = model.getLogLikelihood(proposed_point, data, nVar);
             float the_likelihood_ratio = exp(proposed_log_likelihood-current_log_likelihood);
-            //	    exit(-1);
 
             if( verbose ){
                 std::cout << "current_log_likelihood : " << current_log_likelihood << std::endl;

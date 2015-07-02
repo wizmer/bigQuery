@@ -1,6 +1,8 @@
 #include "pd_model.hpp"
 #include <sstream>
 #include <cmath>
+#include <chrono>
+#include <ctime>
 
 #include "utils/CSV.hpp"
 // source /afs/cern.ch/sw/lcg/contrib/gcc/4.8/x86_64-slc6/setup.sh
@@ -35,7 +37,8 @@ float getOverlap(float a0,float a1,float b0,float b1){
 
 PDModel::PDModel( 
                  const std::vector<float> & bT, const std::vector<float> & bM,  
-                 const std::vector<float> & rT, const std::vector<float> & rM
+                 const std::vector<float> & rT, const std::vector<float> & rM,
+                 const Matrix & betaF, const Matrix & rgdtF
                   ): betaBinsT(bT), betaBinsM(bM), betaF(bT.size()-1, bM.size()-1),
                      rgdtBinsT(rT), rgdtBinsM(rM), rgdtF_transposed(rM.size()-1, rT.size()-1),
                      deltaP(bT.size()-1, rT.size()-1), deltaD(bT.size()-1, rT.size()-1),
@@ -55,6 +58,28 @@ PDModel::PDModel(
                     //if( bBin == betaBinsTs
                 }
         }
+
+    SetRigidityResolution(rgdtF);
+    SetBetaResolution(betaF);
+
+    constuctBaseMatrices();
+
+}
+
+void PDModel::constuctBaseMatrices(){
+    int nVar = betaBinsT.size() -1;
+
+    matrixBase = std::vector<Matrix>(nVar*2);
+    for(int i = 0;i<nVar;i++){
+        std::vector<float> fakeFluxP(nVar);
+        std::vector<float> fakeFluxD(nVar);
+        fakeFluxP[i] = 1;
+        matrixBase[i] = GetPrediction(&fakeFluxP[0],&fakeFluxD[0]);
+
+        fakeFluxP[i] = 0;
+        fakeFluxD[i] = 1;
+        matrixBase[i+nVar] = GetPrediction(&fakeFluxP[0],&fakeFluxD[0]);
+    }
 }
 
 PDModel PDModel::FromCSVS(const std::string & betaFile, const std::string & rgdtFile, int nTrueBins )
@@ -68,9 +93,7 @@ PDModel PDModel::FromCSVS(const std::string & betaFile, const std::string & rgdt
     bT = subBinning(bT, nTrueBins+1);
     rT = subBinning(rT, nTrueBins+1);
 
-    PDModel model(bT,bM,rT,rM);
-    model.SetRigidityResolution(rgdtF);
-    model.SetBetaResolution(betaF);
+    PDModel model(bT,bM,rT,rM,betaF,rgdtF);
 
     return model;
 }
@@ -113,6 +136,7 @@ void PDModel::SetBetaResolution    (const Matrix & matrix)
 Matrix PDModel::GetPrediction( const float* const fluxP,
                                const float* const fluxD  )
 {
+    // std::clock_t start = std::clock();
     Matrix fluxMatrixP(deltaP), fluxMatrixD(deltaD);
     
     fluxMatrixP.map([&fluxP](float v, int row, int r){
@@ -127,13 +151,32 @@ Matrix PDModel::GetPrediction( const float* const fluxP,
             //std::cout << v << "\t" << smearD.get(b,r) << std::endl;
             return v + smearD.get(b,r);});
 
+    // std::cout << "Time : " << (std::clock() - start) / (float)(CLOCKS_PER_SEC) << " s" << std::endl;
     return smearP;
 }
+
+Matrix PDModel::GetPredictionFast( const float* const fluxP,
+                               const float* const fluxD  )
+{
+    // std::clock_t start = std::clock();
+    Matrix output(betaBinsM.size()-1,rgdtBinsM.size()-1);
+    int nBinsBetaT = betaBinsT.size()-1;
+    for(int i = 0;i<nBinsBetaT;i++){
+        float sum = 0;
+        output += (matrixBase[i]*fluxP[i]);
+        output += (matrixBase[i+nBinsBetaT]*fluxD[i]);
+    }
+    // std::cout << "Time : " << (std::clock() - start) / (float)(CLOCKS_PER_SEC) << " s" << std::endl;
+
+    return output;
+}
+
 
 float PDModel::GetLogLikelihood( const float* const fluxP,
                                  const float* const fluxD  )
 {
     Matrix prediction = GetPrediction( fluxP, fluxD );
+    // Matrix prediction = GetPredictionFast( fluxP, fluxD );
 
     // prediction.dump();
     // std::cout << "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"  << std::endl;

@@ -3,7 +3,7 @@ AMSSTATICLIBS := -L$(AMSWD)/lib/linuxx8664gcc5.34 -lntuple_slc6_PG
 LIBS=`root-config --cflags --libs | sed 's/-lPhysics//g' | sed 's/-lGraf3d//g' | sed 's/-lPostscript//g' ` 
 OPTIMIZATION=-O3
 
-all: mcmc reader test_model
+all: mcmc reader test_model test_matrix
 
 mcmc:	mcmc.cpp pd_model.o generalUtils.o
 	g++ ${OPTIMIZATION} ${INCLUDE} $^ -o mcmc -std=c++11 

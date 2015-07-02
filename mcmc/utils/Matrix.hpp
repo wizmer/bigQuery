@@ -65,6 +65,15 @@ public:
                 at(iRow,iColumn) = func(get(iRow,iColumn), iRow, iColumn);
     }
 
+    void linearCombination(std::vector<Matrix> &matrixBase, std::vector<float> &lambda)
+    {
+        int nMatrices = matrixBase.size();
+        for(int iColumn = 0; iColumn < nColumns; iColumn++)
+            for(int iRow = 0; iRow < nRows; iRow++)
+                for(int iMatrix = 0;iMatrix<nMatrices;iMatrix++)
+                    at(iRow,iColumn) += matrixBase[iMatrix].get(iRow,iColumn) * lambda[iMatrix];
+    }
+
     float applyAndSum(std::function<float(float,int,int)> func)
     {
         float ret = 0;
@@ -113,6 +122,42 @@ public:
             }
 	}
         return output;
+    }
+
+    inline Matrix operator*(float scale){
+        Matrix output(nRows,nColumns);
+        for(int iColumn = 0; iColumn < nColumns; iColumn++){
+            for(int iRow = 0; iRow < nRows; iRow++){
+                output.at(iRow,iColumn) = scale * get(iRow,iColumn);
+            }
+        }
+        return output;
+    }
+
+
+    inline Matrix operator+=(const Matrix &rhs){
+        for(int iColumn = 0; iColumn < nColumns; iColumn++){
+            for(int iRow = 0; iRow < nRows; iRow++){
+                at(iRow,iColumn) += rhs.get(iRow,iColumn);
+            }
+        }
+        return (*this);
+    }
+
+    inline bool operator==(const Matrix &rhs){
+        if( nRows != rhs.nRows ) return false;
+        if( nColumns != rhs.nColumns ) return false;
+
+        for(int iColumn = 0; iColumn < nColumns; iColumn++){
+            for(int iRow = 0; iRow < nRows; iRow++){
+                if( rhs.get(iRow,iColumn) != get(iRow,iColumn) ) return false;
+            }
+        }
+        return true;
+    }
+
+    inline bool operator!=(const Matrix &rhs){
+        return !operator==(rhs);
     }
 };
 

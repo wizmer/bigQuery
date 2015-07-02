@@ -11,6 +11,14 @@ class PDModel
     Matrix rgdtF_transposed,  betaF;
     Matrix deltaP, deltaD;
     Matrix observed;
+    std::vector<Matrix> matrixBase;
+    
+
+    void SetRigidityResolution(const Matrix & matrix);
+    void SetBetaResolution    (const Matrix & matrix);
+
+    // Build prediction matrices for all unitary fluxes
+    void constuctBaseMatrices();
 
 public:
     static const float mp;
@@ -18,12 +26,10 @@ public:
 
     // Initializations 
     PDModel( const std::vector<float> & bT, const std::vector<float> & bM, 
-             const std::vector<float> & rT, const std::vector<float> & rM  );
+             const std::vector<float> & rT, const std::vector<float> & rM,
+             const Matrix & betaF, const Matrix & rgdtF);
 
     static PDModel FromCSVS(const std::string & betaFile, const std::string & rgdtFile, int maxTrueBinNumber = 0 );
-
-    void SetRigidityResolution(const Matrix & matrix);
-    void SetBetaResolution    (const Matrix & matrix);
 
     // Getters
     inline std::vector<float> getBetaBinsT(){ return betaBinsT; }
@@ -33,6 +39,10 @@ public:
     
     // Predictions
     Matrix GetPrediction( const float* const fluxP,
+                          const float* const fluxD  );
+
+    // Perform a linear combination of base matrices
+    Matrix GetPredictionFast( const float* const fluxP,
                           const float* const fluxD  );
 
     float GetLogLikelihood( const float* const fluxP,
