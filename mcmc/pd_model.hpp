@@ -18,9 +18,19 @@ class PDModel
     void SetBetaResolution    (const Matrix & matrix);
 
     // Build prediction matrices for all unitary fluxes
-    void constuctBaseMatrices();
+    //void constuctBaseMatrices();
+
 
 public:
+
+    struct SearchSpace
+    {
+        std::vector<float> fluxP;
+        std::vector<float> fluxD;
+        inline int size(){return fluxP.size() + fluxD.size();}
+        inline float getRaw(int i){ return i >= fluxP.size()? fluxD[i-fluxP.size()]:fluxP[i]; }
+    };
+
     static const float mp;
     static const float md;
 
@@ -38,20 +48,18 @@ public:
     inline std::vector<float> getRgdtBinsM(){ return rgdtBinsM; }
     
     // Predictions
-    Matrix GetPrediction( const float* const fluxP,
-                          const float* const fluxD  );
+    Matrix GetPrediction(const SearchSpace & point);
 
     // Perform a linear combination of base matrices
-    Matrix GetPredictionFast( const float* const fluxP,
-                          const float* const fluxD  );
+    Matrix GetPredictionFast(const SearchSpace & point);
 
-    float GetLogLikelihood( const float* const fluxP,
-                            const float* const fluxD  );
+    // Log likelihood
+    float GetLogLikelihood(const SearchSpace & point);
 
-    void GenerateToyObservedData(const std::vector<float> &fluxP,
-                                 const std::vector<float> &fluxD  ){
-        observed = GetPrediction( &fluxP[0], &fluxD[0]);
-
+    // Observed
+    void LoadObservedDataFromFile(const std::string & fname);
+    void GenerateToyObservedData(const SearchSpace & point){
+        observed = GetPrediction(point);
     }
 };
 
