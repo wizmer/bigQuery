@@ -193,7 +193,7 @@ private:
 
         for( int i = 0; i<nStep; i++){
             std::vector<float> proposed_point(nVar);
-            if( i%10000 == 0) printf("%i/%i : %i%%\n",i, nStep, int(float(i)/float(nStep)*100));
+            if( i%30000 == 0) printf("%i/%i : %i%%\n",i, nStep, int(float(i)/float(nStep)*100));
             ProposalFunction::proposePoint(current_point, proposed_point, nVar, sigma);
 
             float proposed_log_likelihood = model.getLogLikelihood(proposed_point, data, nVar);
