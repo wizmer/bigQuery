@@ -52,7 +52,7 @@ public:
 
         for(int i = 0;i<nVar;i++){
             trace.push_back( std::vector<float>(chunkSize) );
-            sigma.push_back( sqrt( initialConditions[i] )/100. );
+            sigma.push_back( sqrt( initialConditions[i] )/50. );
         }
 
         for(int i = 0;i<sigma.size();i++){
@@ -135,8 +135,6 @@ private:
         auto bins = model.model.getBetaBinsT() ;
         for(int i = 0; i < bins.size(); i++) 
             myfile << "bin_" << i << " " << bins[i] << std::endl; 
-
-    
 
         myfile.close();
     }
@@ -293,7 +291,7 @@ int main(int argc, char** argv){
     int nStep = 0;
     std::string name = "test";
     bool verbose = false;
-    float alphaRegularization = 1;
+    float alphaRegularization = 0;
 
     while((c =  getopt(argc, argv, "n:f:v:a:")) != EOF)
         {

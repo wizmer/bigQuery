@@ -1,6 +1,7 @@
 #ifndef _REALISTICTOYMODEL__HPP_
 #define _REALISTICTOYMODEL__HPP_
 
+#include <fstream>
 #include "generalUtils.hpp"
 
 struct RealisticToyModel
@@ -81,46 +82,32 @@ struct RealDataModel
     float alpha;
 
     RealDataModel():
-        model(PDModel::FromCSVS("datasets/B_resolution.csv", "datasets/R_resolution.csv",13)), alpha(0)
+        model(PDModel::FromCSVS("datasets/B_resolution.csv", "datasets/R_resolution.csv")), alpha(0)
     {
+        std::vector<float> toyFluxP;
+        std::vector<float> toyFluxD;
+
         // Set true values of the model
-        std::vector<float> toyFluxP(model.getBetaBinsT().size() - 1);
-        toyFluxP = {
-            56364.9,
-            48061.1,
-            40230.2,
-            32367.6,
-            24068.8,
-            16239.9,
-            10361  ,
-            7038.97,
-            5581.88,
-            4386.49,
-            3266.27,
-            2134.53,
-            949.041};
+        std::ifstream f("initialConditions.txt");
+        while(true){
+            float fluxP, fluxD;
+            f >> fluxP >> fluxD;
+            if( f.eof() ) break;
+            toyFluxP.push_back(fluxP);
+            toyFluxD.push_back(fluxD);
+        }
 
-        std::vector<float> toyFluxD(model.getBetaBinsT().size() - 1);
-        toyFluxD = {
-            6820.49,
-            5891.42,
-            4951.75,
-            3971.72,
-            3043.72,
-            2330.2 ,
-            1824.86,
-            1321.47,
-            815.991,
-            424.332,
-            195.687,
-            92.8731,
-            22.2737};
+        if( toyFluxP.size() != model.getBetaBinsT().size()-1 || toyFluxD.size() != model.getBetaBinsT().size()-1 ){
+            std::cerr << "Wrong initialConditions in initialConditions.txt" << std::endl;
+            std::cerr << "Size do not match: model.getBetaBinsT().size()-1" << std::endl;
+            exit(-1);
+        }
 
-    // for( int i = 0; i < model.getBetaBinsT().size() - 1; i++){
-    //         // putting a realistic power law flux
-    //         toyFluxP.push_back( 100000* pow(sqrt(model.getRgdtBinsT()[i]*model.getRgdtBinsT()[i+1]),-2.7));
-    //         toyFluxD.push_back( toyFluxP[i] / 10. );
-    // }
+        // for( int i = 0; i < model.getBetaBinsT().size() - 1; i++){
+        //     // putting a realistic power law flux
+        //     toyFluxP[i] = 100000* pow(sqrt(model.getRgdtBinsT()[i]*model.getRgdtBinsT()[i+1]),-2.7);
+        //     toyFluxD[i] = toyFluxP[i] / 10.;
+        // }
 
         initialConditions = toyFluxP;
         initialConditions.insert(initialConditions.end(), toyFluxD.begin(), toyFluxD.end());

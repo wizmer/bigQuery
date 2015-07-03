@@ -14,6 +14,12 @@
 #include "generalUtils.hpp"
 #include "Stack.hpp"
 
+constexpr bool monitorTime = false;
+
+enum ReadMode{
+    kFull,
+    kSparse
+};
 
 class ReaderBase{
 public:
@@ -24,11 +30,18 @@ public:
         isToyMC = false;
         
         isAlreadyAnalysed = generalUtils::fileExists(filename+"/.ana");
+        init();
+
     }
 
     void setMaxSteps(int _maxSteps){
         maxSteps = _maxSteps;
     }
+
+    void setCorrelationLength(int _correlationLength){
+        correlationLength = _correlationLength;
+    }
+
 
     void rePlotOffset(){
         std::vector<std::string> files = generalUtils::splitIntoLines( generalUtils::exec("find "+ filename + " | grep fullCan"));
@@ -42,6 +55,9 @@ public:
 	}
     }
 
+    void setMaxChunk(int _maxChunk ){ maxChunk = _maxChunk; }
+    void setFirstChunk(int _firstChunk ){ firstChunk = _firstChunk; }
+
     void rePlotFull(){
 
     }
@@ -53,29 +69,79 @@ public:
 
     void readAll(){
         if( isAlreadyAnalysed ) return rePlotAll();
-        init();
         // Extract number of variables
 
-        int nChunks = generalUtils::stringTo<int>( generalUtils::exec("ls -lrt " + filename + " | grep -o \"chunk[0-9]*\" | cut -c 6- | sort | uniq | wc -l") );
+        int nChunks = generalUtils::stringTo<int>( generalUtils::exec("ls -lrt " + filename + " | grep -o -E \"chunk[0-9]+\" | cut -c 6- | sort | uniq | wc -l") );
         std::cout << "nChunks : " << nChunks << std::endl;
+        int lastChunk = nChunks;
+        if( maxChunk > -1 && maxChunk < nChunks - firstChunk) lastChunk = maxChunk + firstChunk;
 
-        for(int jChunk = 0; jChunk<nChunks; jChunk++){
+        prepareHisto(firstChunk,lastChunk);
+
+        ReadMode readMode;
+        readMode = ReadMode::kFull;
+        //readMode = ReadMode::kSparse;
+        
+        std::cout << "lastChunk : " << lastChunk << std::endl;
+        std::cout << "maxChunk : " << maxChunk << std::endl;
+        std::cout << "nChunks : " << nChunks << std::endl;
+        std::cout << "firstChunk : " << firstChunk << std::endl;
+        for(int jChunk = firstChunk; jChunk<lastChunk; jChunk++){
             for(int iVar = 0; iVar<nVar+1 ;iVar++){
-                std::string chunkName = Form("%s/par%i_chunk%i.bin", filename.c_str(), iVar, jChunk);
-                if( iVar == nVar ) chunkName = Form("%s/lik_chunk%i.bin", filename.c_str(), jChunk);
-                readBinary( chunkName, iVar );
-                fillHistos(chunkName,iVar);
+                //std::cout << "jChunk : " << jChunk << "\tiVar : " << iVar << std::endl;
+                unsigned int nEntries = readBinary( getChunkName(jChunk,iVar),  iVar, readMode );
+                fillHistos(iVar, nEntries);
             }
                 
         }
         plot();
     }
     
+    void prepareHisto(int firstChunk, int lastChunk){
+        std::cout << "prepareHisto" << std::endl;
+        float val = 0;
+        for(int iVar = 0; iVar<nVar+1 ;iVar++){
+            float sum = 0;
+            float sum2 = 0;
+            int n;
+            int count = 0;
+            for(int jChunk = firstChunk; jChunk<lastChunk; jChunk++){
+                // Rough estimation of the mean and variance of the variable to create the histogram
+                unsigned int nEntries = 0;
+                std::ifstream f( getChunkName(jChunk,iVar).c_str(), std::ios::binary );
+                f.read((char*)&nEntries, sizeof(nEntries));
+
+                n = 100;
+                if( nEntries < n ) n = nEntries;
+
+                for(int i = 0; i<n;i++){
+                    if( maxSteps > 0 && nEntries > maxSteps ) nEntries = maxSteps;
+                    f.seekg(sizeof(nEntries)+i*nEntries/n*sizeof(float));
+                    f.read((char*)&val, sizeof(float));
+                    sum +=  val;
+                    sum2 += pow(val, 2);
+                    count++;
+                }
+            }
+
+            float mean = sum/(float)count;
+            float sigma = sqrt( sum2/(float)count - mean*mean);
+            std::cout << "sigma : " << sigma << std::endl;
+            borne[iVar].first  = mean - 10*sigma;
+            borne[iVar].second = mean + 10*sigma;
+            
+            initHisto(iVar);
+
+        }
+
+        std::cout << "End prepareHisto" << std::endl;
+    }
+
 protected:
     std::string filename;
     virtual void plot() = 0;
 
-    virtual void fillHistos(std::string, int) = 0;
+    virtual void fillHistos(int, unsigned int) = 0;
         
     void init(){
         readMetaData();
@@ -87,8 +153,17 @@ protected:
             firstRead[i] = true;
             borne[i] = std::pair<int,int>();
         }
-        
+        firstChunk = 0;
+        maxChunk = -1;
+        correlationLength = 1;
+        nBins = 500;
     }
+    
+    std::string getChunkName(int iChunk, int iVar){
+        if( iVar == nVar ) return filename+"/lik_chunk" + generalUtils::toString(iChunk) + ".bin";
+        return filename + "/par" + generalUtils::toString(iVar) + "_chunk" + generalUtils::toString(iChunk) + ".bin";
+    }
+
     
     std::map< std::string, float>  metadata;
     void readMetaData(){
@@ -109,47 +184,58 @@ protected:
     }
     
     virtual void initHisto(int iParam){
-        h[iParam] = new TH1F(Form("h_%i",iParam),Form("h_%i",iParam), 100,borne[iParam].first,borne[iParam].second);
+        std::cout << iParam << "\t" << borne[iParam].first << "\t" << borne[iParam].second << std::endl;
+        h[iParam] = new TH1F(Form("h_%i",iParam),Form("h_%i",iParam), nBins,borne[iParam].first,borne[iParam].second);
         
-        for(int j = 0;j<nVar;j++){
-            if( firstRead[j] == false ){
-                h2[ std::pair<int,int>(iParam,j) ] = new TH2F(Form("h2_%i_%i",iParam,j),Form("h2_%i_%i",iParam,j), 100,borne[iParam].first, borne[iParam].second, 100, borne[j].first, borne[j].second);
-            }
+        for(int j = 0;j<iParam;j++){
+            h2[ std::pair<int,int>(iParam,j) ] = new TH2F(Form("h2_%i_%i",iParam,j),Form("h2_%i_%i",iParam,j), 100,borne[iParam].first, borne[iParam].second, 100, borne[j].first, borne[j].second);
         }
     }
 
-    void readBinary(std::string fname, int iParam){
+    unsigned int readFullBinary(std::string fname, int iParam ){
+        std::clock_t start;
+        if(monitorTime) start = std::clock();
+
         std::ifstream f(fname.c_str(), std::ios::binary );
 
         float sum = 0;
 
-        unsigned int N;
+        unsigned int nEntries;
 
-        f.read((char*)&N, sizeof(unsigned int));
-        if( maxSteps > 0 && N > maxSteps ) N = maxSteps;
-        f.read((char*)trace[iParam], sizeof(float)*N);
+        f.read((char*)&nEntries, sizeof(unsigned int));
+        if( maxSteps > 0 && nEntries > maxSteps ) nEntries = maxSteps;
+        f.read((char*)trace[iParam], sizeof(float)*nEntries);
+        if(monitorTime) std::cout << "Time readFullBinary : " << (std::clock() - start) / (float)(CLOCKS_PER_SEC / 1000) << " ms" << std::endl;
 
-        // Rough estimation of the mean and variance of the variable to create the histogram
-        if( firstRead[iParam] ){
-            int n = 100;
-            if( N < n ) n = N;
-            float sum = 0;
-            float sum2 = 0;
-            for(int i = 0; i<n;i++){
-                int index = (int)(i/(float)n * N);
-                sum +=  trace[iParam][index];
-                //        std::cout << trace[iParam][index] << "\t" << iParam << "\t" << index << std::endl;
-                sum2 += pow(trace[iParam][index], 2);
-                //std::cout << "trace["<<iParam<<"]["<< index << "] = " << trace[iParam][index] << std::endl;
-            }
-            float mean = sum/(float)n;
-            float sigma = sqrt( sum2/(float)n - mean*mean);
-            borne[iParam].first  = mean - 3*sigma;
-            borne[iParam].second = mean + 3*sigma;
-            firstRead[iParam] = false;
+        return nEntries;
+    }
 
-            initHisto(iParam);
-        }
+    unsigned int readSparseBinary(std::string fname, int iParam ){
+        std::clock_t start;
+        if(monitorTime) start = std::clock();
+
+        std::ifstream f(fname.c_str(), std::ios::binary );
+
+        float sum = 0;
+
+        unsigned int nEntries;
+
+        f.read((char*)&nEntries, sizeof(unsigned int));
+        //        if( maxSteps > 0 && nEntries > maxSteps ) nEntries = maxSteps;
+        
+        for(int i = 0;i<nEntries/(float)correlationLength;i++){
+            f.seekg(sizeof(nEntries)+i*correlationLength*sizeof(float));
+            f.read((char*)&trace[iParam][i*correlationLength], sizeof(float));
+	}
+
+        if(monitorTime) std::cout << "Time readSparseBinary : " << (std::clock() - start) / (float)(CLOCKS_PER_SEC / 1000) << " ms" << std::endl;
+
+        return nEntries/(float)correlationLength;
+    }
+
+    unsigned int readBinary(std::string fname, int iParam, ReadMode readMode ){
+        if( readMode == kFull ) return readFullBinary( fname, iParam);
+        if( readMode == kSparse ) return readSparseBinary( fname, iParam);
     }
 
     virtual void smartPlot(const std::vector<TH1*> &histo){
@@ -182,6 +268,10 @@ protected:
     std::pair<int,int> *borne;
     bool isToyMC;
     bool isAlreadyAnalysed;
+    int firstChunk;
+    int maxChunk;
+    int correlationLength;
+    int nBins;
 };
 
 class FullReader: public ReaderBase{
@@ -260,16 +350,24 @@ protected:
         }
     }
 
-    virtual void fillHistos(std::string fname, int iParam){
-        for(int j = 0;j < metadata["nStep"] ;j++){
-            h[iParam] -> Fill( trace[iParam][j] );
+    virtual void fillHistos(int iParam, unsigned int nEntries){
+        std::clock_t start;
+        if( monitorTime ) start = std::clock();
+
+        for(unsigned int j = 0;j < nEntries/correlationLength ;j++){
+            h[iParam] -> Fill( trace[iParam][j*correlationLength] );
             //std::cout << "trace["<<iParam<<"]["<< j << "] = " << trace[iParam][j] << std::endl;
         }
 
-        for(int j = iParam-3;j<iParam && j>=0;j++){
-            for(int k = 0;k < metadata["nStep"] ;k++) h2[ std::pair<int,int>(iParam,j) ] -> Fill( trace[iParam][k], trace[j][k] );
+        for(int j = iParam-3;j<iParam;j++){
+            if( j < 0 ) continue;
+            for(int k = 0;k < nEntries/correlationLength ;k++) h2[ std::pair<int,int>(iParam,j) ] -> Fill( trace[iParam][k*correlationLength], trace[j][k*correlationLength] );
         }
+
+        if( monitorTime ) std::cout << "Time FillHisto : " << (std::clock() - start) / (float)(CLOCKS_PER_SEC / 1000) << " ms" << std::endl;
     }
+    
+
 };
 
 class LikelihoodTracer: public ReaderBase{
@@ -291,20 +389,19 @@ protected:
 
     }
 
-    virtual void fillHistos(std::string fname, int iParam){
+    virtual void fillHistos(int iParam, unsigned int nEntries){
         if(iParam != nVar ) return;
 
         for(int j = 0;j<nVar;j++){
-            for(int k = 0;k < metadata["nStep"] ;k++) h2[ std::pair<int,int>(iParam,j) ] -> Fill( trace[iParam][k], trace[j][k] );
+            for(unsigned int k = 0;k < nEntries ;k++) h2[ std::pair<int,int>(iParam,j) ] -> Fill( trace[iParam][k], trace[j][k] );
         }
 
-        for(int k = 0;k < metadata["nStep"] ;k++) h[ nVar ] -> Fill( trace[nVar][k] );
-
+        for(unsigned int k = 0;k < nEntries ;k++) h[ nVar ] -> Fill( trace[nVar][k] );
     }
 
     void initHisto(int iParam){
         if(iParam < nVar) return;
-        h[iParam] = new TH1F(Form("h_%i",iParam),Form("h_%i",iParam), 100,borne[iParam].first,borne[iParam].second);
+        h[iParam] = new TH1F(Form("h_%i",iParam),Form("h_%i",iParam), nBins,borne[iParam].first,borne[iParam].second);
         
         for(int j = 0;j<nVar;j++){
             if( firstRead[j] == false ){
@@ -329,16 +426,34 @@ protected:
 
     }
 
-    virtual void fillHistos(std::string fname, int iParam){
+    virtual void fillHistos(int iParam, unsigned int nEntries){
         if(iParam == nVar ) return;
 
-        for(int k = 0;k < metadata["nStep"] ;k++) h[ iParam ] -> Fill( k, trace[iParam][k] );
+        for(unsigned int k = 0;k < nEntries ;k++) h[ iParam ] -> Fill( k, trace[iParam][k] );
         //std::cout << "trace[iParam][metadata[nStep]-1] : " << trace[iParam][(int)(metadata["nStep"]-1)] << std::endl;
     }
 
     void initHisto(int iParam){
         if(iParam == nVar) return;
         h[iParam] = new TH2F(Form("h_%i",iParam),Form("h_%i",iParam), 1000,0,metadata["nStep"],100,borne[iParam].first,borne[iParam].second);
+    }
+};
+
+class LastValue: public ReaderBase{
+public:
+    LastValue(std::string _filename): ReaderBase(_filename){};
+
+protected:
+    std::vector<float> initialCondition;
+    virtual void plot(){
+        for(int i = 0;i<initialCondition.size()/2;i++) std::cout << initialCondition[i] << "\t" << initialCondition[i+initialCondition.size()/2] << std::endl;
+    }
+
+    virtual void fillHistos(int iParam, unsigned int nEntries){
+        initialCondition.push_back(trace[iParam][nEntries-1]);
+    }
+
+    void initHisto(int iParam){
     }
 };
 
@@ -349,25 +464,44 @@ int main(int argc, char** argv){
     int c;
     std::string dirname = "test";
     std::cout << "argv[1] : " << argv[1] << std::endl;
+    int maxChunk = -1, firstChunk = 0, correlationLength = 1;
     if( argc > 1 ) dirname = argv[1];
 
     ReaderBase *r = NULL;
 
-    while((c =  getopt(argc, argv, "t:")) != EOF)
+    while((c =  getopt(argc, argv, "t:c:f:l:")) != EOF)
         {
             switch (c)
                 {
                 case 't':
-                    std::string a(optarg);
-                    if( a == "full" ){
-                        r = new FullReader(dirname);
-                    } else if( a == "lik" ){
-                        r = new LikelihoodTracer(dirname);
-                    } else if( a == "trace" ){
-                        r = new Tracer(dirname);
+                    {
+                        std::string a(optarg);
+                        if( a == "full" ){
+                            r = new FullReader(dirname);
+                        } else if( a == "lik" ){
+                            r = new LikelihoodTracer(dirname);
+                        } else if( a == "trace" ){
+                            r = new Tracer(dirname);
+                        } else if( a == "value" ){
+                            r = new LastValue(dirname);
+                        }
+                        break;
                     }
-
-                    break;
+                case 'c':
+                    {
+                        maxChunk = generalUtils::stringTo<int>(optarg);
+                        break;
+                    }
+                case 'f':
+                    {
+                        firstChunk = generalUtils::stringTo<int>(optarg);
+                        break;
+                    }
+                case 'l':
+                    {
+                        correlationLength = generalUtils::stringTo<int>(optarg);
+                        break;
+                    }
                 }
         }
     
@@ -376,7 +510,11 @@ int main(int argc, char** argv){
     if( r == NULL ) r = new FullReader(dirname);
 
     //    r.setMaxSteps(1000);
-    r->readAll();
+    r -> setMaxChunk(maxChunk);
+    r -> setFirstChunk(firstChunk);
+    r -> setCorrelationLength(correlationLength);
+    r -> readAll();
+
 
     std::cout << "Time : " << (std::clock() - start) / (float)(CLOCKS_PER_SEC / 1000) << " ms" << std::endl;
     app.Run();
