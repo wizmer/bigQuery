@@ -1,8 +1,11 @@
+#ifndef PD_MODEL_H
+#define PD_MODEL_H
 #include <vector>
 #include <functional>
 #include <iostream>
 
 #include "Matrix.hpp"
+
 
 class PDModel
 {
@@ -11,16 +14,28 @@ class PDModel
     Matrix rgdtF_transposed,  betaF;
     Matrix deltaP, deltaD;
     Matrix observed;
-    std::vector<Matrix> matrixBase;
+    float regularizationFactor;
     
 
     void SetRigidityResolution(const Matrix & matrix);
     void SetBetaResolution    (const Matrix & matrix);
 
     // Build prediction matrices for all unitary fluxes
-    void constuctBaseMatrices();
+    //void constuctBaseMatrices();
 
+    // Build prediction matrices for all unitary fluxes
+    void constructBaseMatrices();
 public:
+    std::vector<Matrix> matrixBase;
+
+    struct SearchSpace
+    {
+        std::vector<float> fluxP;
+        std::vector<float> fluxD;
+        inline int size(){return fluxP.size() + fluxD.size();}
+        inline float getRaw(int i){ return i >= fluxP.size()? fluxD[i-fluxP.size()]:fluxP[i]; }
+    };
+
     static const float mp;
     static const float md;
 
@@ -38,26 +53,26 @@ public:
     inline std::vector<float> getRgdtBinsM(){ return rgdtBinsM; }
     
     // Predictions
-    Matrix GetPrediction( const float* const fluxP,
-                          const float* const fluxD  );
-
-    void LoadObservedDataFromFile(const std::string & fname);
+    Matrix GetPrediction(const SearchSpace & point);
 
     // Perform a linear combination of base matrices
-    Matrix GetPredictionFast( const float* const fluxP,
-                          const float* const fluxD  );
+    Matrix GetPredictionFast(const SearchSpace & point);
 
-    float GetLogLikelihood( const float* const fluxP,
-                            const float* const fluxD  );
+    // Log likelihood
+    float GetLogLikelihood(const SearchSpace & point);
 
-    void GenerateToyObservedData(const std::vector<float> &fluxP,
-                                 const std::vector<float> &fluxD  ){
-        observed = GetPrediction( &fluxP[0], &fluxD[0]);
+    // Set regularization factor
+    void setRegularization(float _regularizationFactor){
+        regularizationFactor = _regularizationFactor;
+    }
 
-        std::cout << "observed.getNrows() : " << observed.getNrows() << std::endl;
-        std::cout << "observed.getNcolums() : " << observed.getNcolums() << std::endl;
-
+    // Observed
+    void LoadObservedDataFromFile(const std::string & fname);
+    void GenerateToyObservedData(const SearchSpace & point){
+        observed = GetPrediction(point);
     }
 
 };
 
+std::ostream& operator<<(std::ostream& os, const PDModel::SearchSpace& point);
+#endif //PD_MODEL_H
