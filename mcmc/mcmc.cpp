@@ -88,7 +88,10 @@ public:
         chunkSize = maxRAM / ( (nVar+1)*sizeof(float)) / nThreads;
 
         current_point = initialConditions;
+
+        for(int i = 0;i<nVar;i++) trace.push_back( std::vector<float>(chunkSize) );
         log_likelihood.reserve(chunkSize);
+
 
         // construct a trivial random generator engine from a time-based seed:
         seed = std::chrono::system_clock::now().time_since_epoch().count();
