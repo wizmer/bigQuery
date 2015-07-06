@@ -26,7 +26,6 @@ public:
     ProposalFunction(const Space & initialPoint)
     {
         for(auto v : initialPoint.fluxP){
-            
             sigmaP.push_back(sqrt(v)>1 ? sqrt(v) : 1);
         }
 
@@ -89,7 +88,11 @@ public:
 
         current_point = initialConditions;
 
-        for(int i = 0;i<nVar;i++) trace.push_back( std::vector<float>(chunkSize) );
+        for(int i = 0;i<nVar;i++) 
+        {
+            trace.push_back( std::vector<float>(chunkSize) );
+             grad.push_back( std::vector<float>(chunkSize) );
+        }
         log_likelihood.reserve(chunkSize);
 
 
@@ -130,6 +133,7 @@ private:
     // Raw data 
     std::vector<float> log_likelihood;
     std::vector< std::vector<float> > trace;
+    std::vector< std::vector<float> > grad;
 
     int chunkStepNumber;
     int nThreads;
@@ -162,17 +166,21 @@ private:
         static int chunkNumber = 0;
         
         std::cout << "saving chunk" << std::endl;
+
         for(int i = 0;i<nVar;i++){
-            std::stringstream fname;
+            std::stringstream fname, gname;
             fname << filename <<"/par" << i << "_chunk" << chunkNumber << ".bin";
             std::ofstream myfile( fname.str(), std::ios::out | std::ios::binary);
+            gname << filename <<"/grad" << i << "_chunk" << chunkNumber << ".bin";
+            std::ofstream grfile( gname.str(), std::ios::out | std::ios::binary);
 
             myfile.write((char*)&chunkStepNumber, sizeof(int));
+            grfile.write((char*)&chunkStepNumber, sizeof(int));
     
             //std::clock_t start = std::clock();
 
-            myfile.write((char*)&trace[i][0], sizeof(float)*chunkStepNumber);
-            myfile.close();
+            myfile.write((char*)&trace[i][0], sizeof(float)*chunkStepNumber); myfile.close();
+            grfile.write((char*)& grad[i][0], sizeof(float)*chunkStepNumber); grfile.close();
         }
 
         std::stringstream fname;
@@ -199,8 +207,12 @@ private:
     void addCurrentPointToChain()
     {
         log_likelihood[chunkStepNumber] = current_log_likelihood;
+        auto gradient = model.GetLogLikelihoodGradient(current_point);
         for(int i = 0; i < nVar; i++)
+        {
             trace[i][chunkStepNumber] = current_point.getRaw(i);
+             grad[i][chunkStepNumber] = gradient.getRaw(i);
+        }
         
         chunkStepNumber++;
     }

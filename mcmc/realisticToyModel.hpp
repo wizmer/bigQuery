@@ -52,7 +52,7 @@ struct RealDataModel: public PDModel
         PDModel(PDModel::FromCSVS("datasets/B_resolution.csv", "datasets/R_resolution.csv"))
     {
         // Get initial conditions
-        std::ifstream f("initialConditions.txt");
+        std::ifstream f("datasets/initialConditions.txt");
         while(true){
             float fluxP, fluxD;
             f >> fluxP >> fluxD;

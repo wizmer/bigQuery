@@ -147,8 +147,8 @@ Matrix PDModel::GetPredictionFast(const SearchSpace & point)
     int nBinsBetaT = betaBinsT.size()-1;
     for(int i = 0;i<nBinsBetaT;i++){
         float sum = 0;
-        output += (matrixBase[i]*point.fluxP[i]);
-        output += (matrixBase[i+nBinsBetaT]*point.fluxD[i]);
+        output += (matrixBaseP[i]*point.fluxP[i]);
+        output += (matrixBaseD[i]*point.fluxD[i]);
     }
 
     return output;
@@ -156,20 +156,15 @@ Matrix PDModel::GetPredictionFast(const SearchSpace & point)
 
 void PDModel::constructBaseMatrices(){
     int nVar = betaBinsT.size() -1;
-    matrixBase = std::vector<Matrix>(nVar*2);
+    SearchSpace base;
+    base.fluxP  = std::vector<float>(nVar,0);
+    matrixBaseP = std::vector<Matrix>(nVar);
+    base.fluxD  = std::vector<float>(nVar,0);
+    matrixBaseD = std::vector<Matrix>(nVar);
 
-    PDModel::SearchSpace base;
-    base.fluxP = std::vector<float>(nVar,0);
-    base.fluxD = std::vector<float>(nVar,0);
-
-    for(int i = 0;i<nVar;i++){
-        base.fluxP[i] = 1;
-        matrixBase[i] = GetPrediction(base);
-        base.fluxP[i] = 0;
-
-        base.fluxD[i] = 1;
-        matrixBase[i+nVar] = GetPrediction(base);
-        base.fluxD[i] = 0;
+    for(int i = 0; i < nVar; i++){
+        base.fluxP[i] = 1; matrixBaseP[i] = GetPrediction(base); base.fluxP[i] = 0;
+        base.fluxD[i] = 1; matrixBaseD[i] = GetPrediction(base); base.fluxD[i] = 0;
     }
 }
 
@@ -182,6 +177,23 @@ float PDModel::GetLogLikelihood(const SearchSpace & point)
             return observed.get(n,m) * log(expected) - expected;
         }
     );
+    return ret;
+}
+
+PDModel::SearchSpace PDModel::GetLogLikelihoodGradient(const SearchSpace & point)
+{
+    int nVar = betaBinsT.size() -1;
+    // (N/Lambda - 1)
+    Matrix factor = GetPrediction(point);
+    factor.map([this](float expected , int n, float m){
+        return observed.get(n,m)/expected - 1;
+    });
+
+    auto product = [&factor](float f, int n, float m)
+                   { return factor.get(n,m) * f; };
+    SearchSpace ret;
+    for(auto matrixP: matrixBaseP) ret.fluxP.push_back(matrixP.applyAndSum(product));
+    for(auto matrixD: matrixBaseD) ret.fluxD.push_back(matrixD.applyAndSum(product));
     return ret;
 }
 

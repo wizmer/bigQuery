@@ -26,7 +26,8 @@ class PDModel
     // Build prediction matrices for all unitary fluxes
     void constructBaseMatrices();
 public:
-    std::vector<Matrix> matrixBase;
+    std::vector<Matrix> matrixBaseP;
+    std::vector<Matrix> matrixBaseD;
 
     struct SearchSpace
     {
@@ -60,6 +61,9 @@ public:
 
     // Log likelihood
     float GetLogLikelihood(const SearchSpace & point);
+    // Gradient log likelihood 
+    SearchSpace GetLogLikelihoodGradient(const SearchSpace & point);
+
 
     // Set regularization factor
     void setRegularization(float _regularizationFactor){

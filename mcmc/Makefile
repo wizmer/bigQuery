@@ -6,14 +6,14 @@ OPTIMIZATION=-O3
 
 all: mcmc reader test_model test_matrix
 
-mcmc:	mcmc.cpp pd_model.o 
-	g++ ${OPTIMIZATION} ${INCLUDE} $(LIBS) $^ -o mcmc -std=c++11 -lGeneralUtils
+mcmc:	mcmc.cpp pd_model.o generalUtils.o
+	g++ ${OPTIMIZATION} ${INCLUDE} $^ -o mcmc -std=c++11
 
 reader:	reader.cpp
 	g++ ${OPTIMIZATION} -std=c++11  -L${amsUtils}/lib ${INCLUDE} reader.cpp -o reader  ${LIBS} -lRootUtils  -lStack -lGeneralUtils
 
-# generalUtils.o: utils/generalUtils.cpp utils/generalUtils.hpp 
-# 	g++ ${OPTIMIZATION} ${INCLUDE} -c $< -std=c++11 
+generalUtils.o: utils/generalUtils.cpp utils/generalUtils.hpp 
+	g++ ${OPTIMIZATION} ${INCLUDE} -c $< -std=c++11 
 
 pd_model.o: pd_model.cpp  pd_model.hpp
 	g++ ${OPTIMIZATION} ${INCLUDE} -c $< -std=c++11 
