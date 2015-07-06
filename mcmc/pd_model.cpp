@@ -19,7 +19,9 @@ std::vector<float> subBinning(const std::vector<float> &bT, int nBins, int first
     if( nBins <= 1) return std::vector<float>(bT);
 
     if( nBins + firstBin > bT.size() ){
-        std::cout << "Cannot extract sub binning of size << " << nBins << " starting at: " << firstBin << " using input vector of size: " << bT.size() << std::endl;
+        std::cout << "Cannot extract sub binning of size << " << nBins 
+                  << " starting at: " << firstBin 
+                  << " using input vector of size: " << bT.size() << std::endl;
         exit(-1);
     }
 
@@ -40,10 +42,11 @@ PDModel::PDModel(
                  const std::vector<float> & bT, const std::vector<float> & bM,  
                  const std::vector<float> & rT, const std::vector<float> & rM,
                  const Matrix & betaF, const Matrix & rgdtF
-                  ): betaBinsT(bT), betaBinsM(bM), betaF(bT.size()-1, bM.size()-1),
-                     rgdtBinsT(rT), rgdtBinsM(rM), rgdtF_transposed(rM.size()-1, rT.size()-1),
-                     deltaP(bT.size()-1, rT.size()-1), deltaD(bT.size()-1, rT.size()-1),
-                     observed(bM.size()-1,rM.size()-1)
+                  ):    betaBinsT(bT), betaBinsM(bM), betaF(bT.size()-1, bM.size()-1),
+                        rgdtBinsT(rT), rgdtBinsM(rM), rgdtF_transposed(rM.size()-1, rT.size()-1),
+                        deltaP(bT.size()-1, rT.size()-1), deltaD(bT.size()-1, rT.size()-1),
+                        observed(bM.size()-1,rM.size()-1), regularizationFactor(0) 
+                                                                     
 {
     for(int bBin=0; bBin < betaBinsT.size() - 1; bBin++)
         {
@@ -63,24 +66,8 @@ PDModel::PDModel(
     SetRigidityResolution(rgdtF);
     SetBetaResolution(betaF);
 
-    constuctBaseMatrices();
+    constructBaseMatrices();
 
-}
-
-void PDModel::constuctBaseMatrices(){
-    int nVar = betaBinsT.size() -1;
-
-    matrixBase = std::vector<Matrix>(nVar*2);
-    for(int i = 0;i<nVar;i++){
-        std::vector<float> fakeFluxP(nVar);
-        std::vector<float> fakeFluxD(nVar);
-        fakeFluxP[i] = 1;
-        matrixBase[i] = GetPrediction(&fakeFluxP[0],&fakeFluxD[0]);
-
-        fakeFluxP[i] = 0;
-        fakeFluxD[i] = 1;
-        matrixBase[i+nVar] = GetPrediction(&fakeFluxP[0],&fakeFluxD[0]);
-    }
 }
 
 PDModel PDModel::FromCSVS(const std::string & betaFile, const std::string & rgdtFile, int nTrueBins )
@@ -117,7 +104,7 @@ void PDModel::SetRigidityResolution(const Matrix & matrix)
 }
 
 
-void PDModel::SetBetaResolution    (const Matrix & matrix)
+void PDModel::SetBetaResolution(const Matrix & matrix)
 {
     if( matrix.getNrows() != (betaBinsT.size() - 1) ) 
         {
@@ -134,62 +121,67 @@ void PDModel::SetBetaResolution    (const Matrix & matrix)
 }
 
 
-Matrix PDModel::GetPrediction( const float* const fluxP,
-                               const float* const fluxD  )
+Matrix PDModel::GetPrediction(const SearchSpace & point)
 {
     // std::clock_t start = std::clock();
     Matrix fluxMatrixP(deltaP), fluxMatrixD(deltaD);
     
-    fluxMatrixP.map([&fluxP](float v, int row, int r){
-            return v*fluxP[row];});
-
-    fluxMatrixD.map([&fluxD](float v, int b, int r){return v*fluxD[b];});
+    fluxMatrixP.map([&point](float v, int row, int r){
+        return v * point.fluxP[row];});
+    fluxMatrixD.map([&point](float v, int b, int r){
+        return v * point.fluxD[b];});
 
     Matrix smearP = betaF.Dot(fluxMatrixP.Dot(rgdtF_transposed));
     Matrix smearD = betaF.Dot(fluxMatrixD.Dot(rgdtF_transposed));
 
-    smearP.map([&smearD](float v, int b, int r){
-            //std::cout << v << "\t" << smearD.get(b,r) << std::endl;
-            return v + smearD.get(b,r);});
+    smearP.map([&smearD](float v, int b, int r){return v + smearD.get(b,r);});
 
     // std::cout << "Time : " << (std::clock() - start) / (float)(CLOCKS_PER_SEC) << " s" << std::endl;
     return smearP;
 }
 
-Matrix PDModel::GetPredictionFast( const float* const fluxP,
-                               const float* const fluxD  )
+Matrix PDModel::GetPredictionFast(const SearchSpace & point)
 {
     // std::clock_t start = std::clock();
     Matrix output(betaBinsM.size()-1,rgdtBinsM.size()-1);
     int nBinsBetaT = betaBinsT.size()-1;
     for(int i = 0;i<nBinsBetaT;i++){
         float sum = 0;
-        output += (matrixBase[i]*fluxP[i]);
-        output += (matrixBase[i+nBinsBetaT]*fluxD[i]);
+        output += (matrixBase[i]*point.fluxP[i]);
+        output += (matrixBase[i+nBinsBetaT]*point.fluxD[i]);
     }
-    // std::cout << "Time : " << (std::clock() - start) / (float)(CLOCKS_PER_SEC) << " s" << std::endl;
 
     return output;
 }
 
+void PDModel::constructBaseMatrices(){
+    int nVar = betaBinsT.size() -1;
+    matrixBase = std::vector<Matrix>(nVar*2);
 
-float PDModel::GetLogLikelihood( const float* const fluxP,
-                                 const float* const fluxD  )
+    PDModel::SearchSpace base;
+    base.fluxP = std::vector<float>(nVar,0);
+    base.fluxD = std::vector<float>(nVar,0);
+
+    for(int i = 0;i<nVar;i++){
+        base.fluxP[i] = 1;
+        matrixBase[i] = GetPrediction(base);
+        base.fluxP[i] = 0;
+
+        base.fluxD[i] = 1;
+        matrixBase[i+nVar] = GetPrediction(base);
+        base.fluxD[i] = 0;
+    }
+}
+
+
+float PDModel::GetLogLikelihood(const SearchSpace & point)
 {
-    Matrix prediction = GetPrediction( fluxP, fluxD );
-    // Matrix prediction = GetPredictionFast( fluxP, fluxD );
-
-    // prediction.dump();
-    // std::cout << "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"  << std::endl;
-    // observed.dump();
-    // exit(-1);
-
+    Matrix prediction = GetPrediction(point);
     float ret = prediction.applyAndSum(
-                                       [this](float expected , int n, float m){
-                                           // std::cout << observed.get(n,m) << "\t" << expected << std::endl;
-                                           return observed.get(n,m) * log(expected) - expected;
-                                       });
-
+        [this](float expected , int n, float m){
+            return observed.get(n,m) * log(expected) - expected;
+        }
+    );
     return ret;
 }
 
@@ -197,17 +189,20 @@ void PDModel::LoadObservedDataFromFile(const std::string & fname)
 {
     std::fstream fs(fname);
     std::vector<std::vector<float> > data;
-    for(int b = 0; b < betaBinsM.size()-1; b++)
-        {
-            std::vector<float> row;
-            for(int r = 0; r < rgdtBinsM.size()-1; r++)
-                {
-                    float v = 0;
-                    fs >> v;
-                    row.push_back(v);
-                }
-            data.push_back(row);
-        }
 
-    observed.Fill<std::vector<std::vector<float> > >(data);
+    for(int b = 0; b < betaBinsM.size(); b++)
+    {
+        std::vector<float> row;
+        for(int r = 0; r < rgdtBinsM.size(); r++)
+        {
+            float v = 0;
+            fs >> v;
+            row.push_back(v);
+        }
+        data.push_back(row);
+    }
+
+    Matrix obs(betaBinsM.size()-1,rgdtBinsM.size()-1);
+    obs.Fill(data);
+    observed = obs;
 }

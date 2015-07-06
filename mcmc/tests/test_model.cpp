@@ -38,9 +38,12 @@ bool test_model1()
     // Making a model with two diagonal matrices
     PDModel model(betaT, betaT, rgdtT, rgdtT, unitB, unitR);
 
-    // Pass unit flux. 
-    std::vector<float> unitFlux(betaT.size()-1, 1);
-    Matrix prediction = model.GetPrediction(&unitFlux[0],&unitFlux[0]);
+    // Pass unit flux.
+    PDModel::SearchSpace base;
+    base.fluxP = std::vector<float>(betaT.size()-1,1);
+    base.fluxD = std::vector<float>(betaT.size()-1,1);
+
+    Matrix prediction = model.GetPrediction(base);
 
     // Test
     
@@ -125,11 +128,13 @@ void test_model3(){
     bool pass = true;
     //for(int k = 0;k<nVar;k++){
     for(int k = 0;k<1;k++){
-        std::vector<float> fakeFluxP(nVar,0);
-        std::vector<float> fakeFluxD(nVar,0);
+        PDModel::SearchSpace base;
+        base.fluxP = std::vector<float>(nVar,0);
+        base.fluxD = std::vector<float>(nVar,0);
  
-        fakeFluxP[k] = 1;
-        Matrix matrix = model.GetPrediction(&fakeFluxP[0],&fakeFluxD[0]);
+        base.fluxP[k] = 1;
+        
+        Matrix matrix = model.GetPrediction(base);
   
         if( matrix.getNrows() != model.getBetaBinsM().size()-1 ){
             std::cout << "wrong beta bin dimension" << std::endl;
@@ -165,23 +170,27 @@ void test_model3(){
 
 // Test that GetPredictionFast works correctly
 void test_model4(){
-    PDModel model = PDModel::FromCSVS("datasets/B_resolution.csv", "datasets/R_resolution.csv",10);
+    PDModel model = PDModel::FromCSVS("datasets/B_resolution.csv", "datasets/R_resolution.csv");
     int nVar = model.getBetaBinsT().size()-1;
 
+
     bool pass = true;
-    std::vector<float> fakeFluxP(nVar,0);
-    std::vector<float> fakeFluxD(nVar,0);
+    PDModel::SearchSpace base;
+    base.fluxP = std::vector<float>(nVar,0);
+    base.fluxD = std::vector<float>(nVar,0);
+
     for(int i = 0;i<nVar;i++){
-        fakeFluxP[i] = i;
-        fakeFluxD[i] = i;
+        base.fluxP[i] = i;
+        base.fluxD[i] = i;
     }
 
-    Matrix A = model.GetPrediction(&fakeFluxP[0],&fakeFluxD[0]);
-    Matrix B = model.GetPredictionFast(&fakeFluxP[0],&fakeFluxD[0]);
+
+    Matrix A = model.GetPrediction(base);
+    Matrix B = model.GetPredictionFast(base);
 
     for(int i = 0;i<A.getNrows();i++){
         for(int j = 0;j<A.getNcolums();j++){
-            if( std::abs(A.get(i,j) - B.get(i,j)) > 0.000001 ){
+            if( std::abs(A.get(i,j) - B.get(i,j)) > 0.00001 ){
                 std::cout << i << "\t" << j << "\t" << A.get(i,j) << "\t" << B.get(i,j) << std::endl;
                 pass = false;
             }
@@ -206,7 +215,7 @@ void test_computeDerivative(){
     f.push_back(std::pair<float, float>(std::log10(1000),100));
     f.push_back(std::pair<float, float>(std::log10(1)   ,1000));
 
-    std::vector<std::pair<float,float>> firstDerivative = RealisticToyModel::getLogDerivative(f);
+    std::vector<std::pair<float,float>> firstDerivative = getLogDerivative(f);
     if( firstDerivative[0].first !=  2 ) {
         std::cout << "firstDerivative[0].first : " << firstDerivative[0].first << std::endl;
         pass = false;
@@ -217,7 +226,7 @@ void test_computeDerivative(){
         pass = false;
     }
     
-    std::vector<std::pair<float,float>> secondDerivative = RealisticToyModel::getLogDerivative(firstDerivative);
+    std::vector<std::pair<float,float>> secondDerivative = getLogDerivative(firstDerivative);
 
     if( secondDerivative[0].first != -5 ){
         std::cout << "secondDerivative[0].first : " << secondDerivative[0].first << std::endl;
@@ -233,7 +242,7 @@ void test_computeDerivative(){
     }
 
     // Testing that a power law returns 0
-    secondDerivative = RealisticToyModel::getLogDerivative( RealisticToyModel::getLogDerivative(powerLaw) );
+    secondDerivative = getLogDerivative( getLogDerivative(powerLaw) );
     float smoothness = 0;
     for(int i = 0;i<secondDerivative.size();i++){
         smoothness += std::abs(secondDerivative[i].first);
@@ -250,7 +259,7 @@ void test_computeDerivative(){
 int main(void)
 {
     test_model1();
-    //test_model2();
+    // test_model2();
     test_model3();
     test_model4();
     test_computeDerivative();

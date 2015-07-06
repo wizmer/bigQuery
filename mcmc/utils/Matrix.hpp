@@ -1,3 +1,5 @@
+#ifndef MATRIX_H
+#define MATRIX_H
 #include <vector>
 #include <functional>
 #include <iostream>
@@ -161,3 +163,5 @@ public:
     }
 };
 
+
+#endif //MATRIX_H
