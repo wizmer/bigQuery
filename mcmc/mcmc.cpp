@@ -52,7 +52,9 @@ public:
 
         for(int i = 0;i<nVar;i++){
             trace.push_back( std::vector<float>(chunkSize) );
-            sigma.push_back( sqrt( initialConditions[i] )/50. );
+            double _sigma = sqrt( initialConditions[i] )/50.;
+            if( _sigma < 1 ) _sigma = 1;
+            sigma.push_back( _sigma );
         }
 
         for(int i = 0;i<sigma.size();i++){
