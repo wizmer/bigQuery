@@ -1,4 +1,8 @@
+#ifndef _CSV__H_
+#define _CSV__H_
+
 #include "generalUtils.hpp"
+#include "Matrix.hpp"
 
 std::vector<float> getRow(float & first, std::string str)
 {
@@ -84,4 +88,7 @@ MatrixB getMask(const std::string & fname){
     output.Fill<std::vector< std::vector<bool> > >(data);
     return output;
 }
+
+
+#endif //CSV_H
 

@@ -1,6 +1,5 @@
 #include "mcmc.hpp"
 
-
 template <class Model, class ProposalFunction > MCMC<Model, ProposalFunction >::MCMC(std::string name):
     model(),
     realValues(model.realValues),
@@ -42,6 +41,7 @@ template <class Model, class ProposalFunction > float MCMC<Model, ProposalFuncti
     // std::cout << "regularizationFactor : " << regularizationFactor << std::endl;
     // std::cout << proposed_log_likelihood << "\t" << antismoothness*regularizationFactor << std::endl;
     proposed_log_likelihood -= regularizationFactor * antismoothness;
+    std::cout << "proposed_log_likelihood : " << proposed_log_likelihood << std::endl;
     return proposed_log_likelihood;
 }
 
@@ -49,10 +49,10 @@ int main(int argc, char** argv){
     int c;
     int nStep = 0;
     std::string name = "test";
+    std::string maskFile = ""; 
     bool verbose = false;
     float alphaRegularization = 0;
-
-    while((c =  getopt(argc, argv, "n:f:v:a:")) != EOF)
+    while((c =  getopt(argc, argv, "n:f:v:a:m:")) != EOF)
         {
             switch (c)
                 {
@@ -68,6 +68,9 @@ int main(int argc, char** argv){
                 case 'a':
                     alphaRegularization = generalUtils::stringTo<float>(optarg);
                     break;
+                case 'm':
+                    maskFile = optarg;
+                    break;
                 default:
                     break;
                 }
@@ -79,6 +82,8 @@ int main(int argc, char** argv){
     MCMC<RealDataModel, ProposalFunction > a(name);
     a.setRegularizationFactor(alphaRegularization);
     a.setVerbose(verbose);
+    if(maskFile != "") a.setMask(maskFile);
+    
     if( nStep > 0 ) a.setSteps(nStep);
     a.run();
     std::cout << "sizeof(a) : " << sizeof(a) << std::endl;

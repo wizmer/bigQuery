@@ -3,6 +3,9 @@
 #include <vector>
 #include <functional>
 #include <iostream>
+#include <vector>
+#include <functional>
+#include <iostream>
 
 #include "Matrix.hpp"
 #include "SearchSpace.hpp"
@@ -22,7 +25,6 @@ class PDModel
 
     void SetRigidityResolution(const MatrixF & matrix);
     void SetBetaResolution    (const MatrixF & matrix);
-    void SetMask(const std::string & fname);
 
     // Build prediction matrices for all unitary fluxes
     void constructBaseMatrices();
@@ -65,7 +67,8 @@ public:
         observed = GetPrediction(point);
     }
 
-    void SetMask(const MatrixB & _mask);
+    void SetMask(const std::string & maskFile);
+void SetMask(const MatrixB & _mask);
 
 };
 
