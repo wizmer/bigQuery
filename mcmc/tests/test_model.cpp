@@ -1,7 +1,8 @@
 #include "../pd_model.hpp"
 #include <cmath>
 
-#include "realisticToyModel.hpp"
+//#include "realisticToyModel.hpp"
+#include "pd_model.hpp"
 
 typedef std::vector<std::vector<float>> V2D;
 

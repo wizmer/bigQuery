@@ -14,6 +14,17 @@ const float PDModel::md = (float)1.8756;
 float R_from_beta(float beta, float m){ return m*beta/(float)sqrt(1-beta*beta); }
 float beta_from_R(float R, float m){ return R/(float)sqrt(R*R+m*m); }
 
+std::vector< std::pair<float,float> > getLogDerivative(const std::vector< std::pair<float, float> > & point){
+    int nVar = point.size();
+
+    std::vector< std::pair<float,float> > derivative(nVar-1);
+    for(int i = 0;i<nVar-1;i++){
+        derivative[i].first  = ( point[i+1].first - point[i].first )/ (std::log10(point[i+1].second) - std::log10(point[i].second) );
+        derivative[i].second = std::sqrt(point[i+1].second * point[i].second);
+    }
+    return derivative;
+}
+
 
 std::vector<float> subBinning(const std::vector<float> &bT, int nBins, int firstBin = 0){
     if( nBins <= 1) return std::vector<float>(bT);
@@ -183,6 +194,28 @@ float PDModel::GetLogLikelihood(const SearchSpace & point)
                                        );
     return ret;
 }
+
+float PDModel::GetRegularizationTerm(const SearchSpace & point){
+    float smoothness = 0;
+
+    std::vector<std::pair<float,float>> pairFluxEnergyP(point.fluxP.size()), pairFluxEnergyD(point.fluxD.size());
+    for(int i = 0;i<pairFluxEnergyP.size();i++)
+        pairFluxEnergyP[i] = std::pair<float,float>(point.fluxP[i], std::sqrt(rgdtBinsT[i]*rgdtBinsT[i+1]));
+
+    for(int i = 0;i<pairFluxEnergyD.size();i++)
+        pairFluxEnergyD[i] = std::pair<float,float>(point.fluxD[i], std::sqrt(rgdtBinsT[i]*rgdtBinsT[i+1]));
+
+
+    std::vector< std::pair<float,float> > secondDerivativeP = getLogDerivative( getLogDerivative( pairFluxEnergyP ));
+    std::vector< std::pair<float,float> > secondDerivativeD = getLogDerivative( getLogDerivative( pairFluxEnergyD ));
+
+    for(int i = 0;i<secondDerivativeD.size();i++){
+        smoothness += std::abs(secondDerivativeP[i].first);
+        smoothness += std::abs(secondDerivativeD[i].first);
+    }
+
+}
+
 
 void PDModel::LoadObservedDataFromFile(const std::string & fname)
 {

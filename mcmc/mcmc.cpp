@@ -97,12 +97,11 @@ public:
         // construct a trivial random generator engine from a time-based seed:
         seed = std::chrono::system_clock::now().time_since_epoch().count();
         generator.seed(seed);
-
     }
 
-    // void setRegularization( float _alpha ){
-    //     model.setRegularization(_alpha);
-    // }
+    void setRegularizationFactor( float _alpha ){
+        regularizationFactor = _alpha;
+    }
     
     void run(){ loop(); }
     void setSteps(int _nSteps){ nStep = _nSteps; }
@@ -233,6 +232,11 @@ private:
             auto proposed_point = proposalFunction.proposePoint(current_point);
 
             float proposed_log_likelihood = model.GetLogLikelihood(proposed_point);
+            float antismoothness = model.GetRegularizationTerm(proposed_point);
+            std::cout << "regularizationFactor : " << regularizationFactor << std::endl;
+            std::cout << proposed_log_likelihood << "\t" << antismoothness*regularizationFactor << std::endl;
+            proposed_log_likelihood -= regularizationFactor * antismoothness;
+
             float the_likelihood_ratio = exp(proposed_log_likelihood-current_log_likelihood);
 
             if( verbose ){
@@ -300,6 +304,7 @@ int main(int argc, char** argv){
     MCMC<RealDataModel, ProposalFunction > a(name);
     a.setRegularizationFactor(alphaRegularization);
     a.setVerbose(verbose);
+    a.setRegularizationFactor(alphaRegularization);
     if( nStep > 0 ) a.setSteps(nStep);
     a.run();
     std::cout << "sizeof(a) : " << sizeof(a) << std::endl;

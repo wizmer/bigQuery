@@ -6,6 +6,7 @@
 
 #include "pd_model.hpp"
 
+
 // static std::vector< std::pair<float,float> > getLogDerivative(const std::vector< std::pair<float, float> > & point){
 //     long unsigned int nVar = point.size();
 
@@ -33,10 +34,6 @@ struct RealisticToyModel: public PDModel
             realValues.fluxD.push_back(10000);
         }
 
-
-        // Set initial conditions on true value
-        initialConditions = realValues;
-
         // Generate fake data
 
         GenerateToyObservedData(realValues);
@@ -54,7 +51,12 @@ struct RealDataModel: public PDModel
         realValues(), initialConditions()
     {
         // Get initial conditions
-        std::ifstream f("initialConditions.txt");
+        std::string fname = "datasets/initialConditions.txt";
+        std::ifstream f(fname);
+        if( !f ){
+            std::cerr << "No file : " << fname << " found !\nExit !" << std::endl;
+            exit(-1);
+        }
         while(true){
             float fluxP, fluxD;
             f >> fluxP >> fluxD;
@@ -78,6 +80,7 @@ struct RealDataModel: public PDModel
         // Load real data
         LoadObservedDataFromFile("datasets/observed_data.txt");
     }
+
 
     ~RealDataModel(){}
 };

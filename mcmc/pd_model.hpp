@@ -6,6 +6,7 @@
 
 #include "Matrix.hpp"
 
+std::vector< std::pair<float,float> > getLogDerivative(const std::vector< std::pair<float, float> > & point);
 
 class PDModel
 {
@@ -15,8 +16,6 @@ class PDModel
     Matrix rgdtF_transposed,  betaF;
     Matrix deltaP, deltaD;
     Matrix observed;
-    float regularizationFactor;
-    
 
     void SetRigidityResolution(const Matrix & matrix);
     void SetBetaResolution    (const Matrix & matrix);
@@ -37,7 +36,6 @@ public:
         std::vector<float> fluxD;
         inline long unsigned int size(){return fluxP.size() + fluxD.size();}
         inline float getRaw(int i){ return i >= fluxP.size()? fluxD[i-fluxP.size()]:fluxP[i]; }
-
     };
 
     static const float mp;
@@ -57,7 +55,7 @@ public:
     inline std::vector<float> getBetaBinsM(){ return betaBinsM; }
     inline std::vector<float> getRgdtBinsT(){ return rgdtBinsT; }
     inline std::vector<float> getRgdtBinsM(){ return rgdtBinsM; }
-    
+
     // Predictions
     Matrix GetPrediction(const SearchSpace & point);
 
@@ -67,10 +65,8 @@ public:
     // Log likelihood
     float GetLogLikelihood(const SearchSpace & point);
 
-    // Set regularization factor
-    void setRegularization(float _regularizationFactor){
-        regularizationFactor = _regularizationFactor;
-    }
+    // Regularization term
+    float GetRegularizationTerm(const SearchSpace & point);
 
     // Observed
     void LoadObservedDataFromFile(const std::string & fname);

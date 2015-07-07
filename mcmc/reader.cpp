@@ -88,6 +88,10 @@ public:
         std::cout << "firstChunk : " << firstChunk << std::endl;
         for(int jChunk = firstChunk; jChunk<lastChunk; jChunk++){
             for(int iVar = 0; iVar<nVar+1 ;iVar++){
+
+                // if there is a resticted set of variable set and iVar do not belong to it, then continue
+                if(restrictedVariableSet.size() > 0 && restrictedVariableSet[iVar] == false) continue;
+
                 //std::cout << "jChunk : " << jChunk << "\tiVar : " << iVar << std::endl;
                 unsigned int nEntries = readBinary( getChunkName(jChunk,iVar),  iVar, readMode );
                 fillHistos(iVar, nEntries);
@@ -100,11 +104,14 @@ public:
     void prepareHisto(int firstChunk, int lastChunk){
         std::cout << "prepareHisto" << std::endl;
         float val = 0;
+        int nVarToPlot = nVar;
+        //        if(index.size() > 0)
         for(int iVar = 0; iVar<nVar+1 ;iVar++){
             float sum = 0;
             float sum2 = 0;
             int n;
             int count = 0;
+            if(restrictedVariableSet.size() > 0 && restrictedVariableSet[iVar] == false) continue;
             for(int jChunk = firstChunk; jChunk<lastChunk; jChunk++){
                 // Rough estimation of the mean and variance of the variable to create the histogram
                 unsigned int nEntries = 0;
@@ -135,6 +142,15 @@ public:
         }
 
         std::cout << "End prepareHisto" << std::endl;
+    }
+
+
+    void setRestrictedVariableSet( std::vector<int> _restrictedVariableSet ){
+        index.clear();
+        for(int i = 0;i<_restrictedVariableSet.size();i++){
+            restrictedVariableSet[_restrictedVariableSet[i]] = true;
+            index[ i ] = _restrictedVariableSet[i];
+	}
     }
 
 protected:
@@ -181,6 +197,10 @@ protected:
         nVar = metadata["nVar"];
         isToyMC = metadata["isToyMC"];
         if( maxSteps > 0 && metadata["nStep"] > maxSteps ) metadata["nStep"] = maxSteps;
+
+        for(int i = 0;i<nVar;i++){
+            index[i] = i;
+	}
     }
     
     virtual void initHisto(int iParam){
@@ -272,6 +292,9 @@ protected:
     int maxChunk;
     int correlationLength;
     int nBins;
+
+    std::map<int,bool> restrictedVariableSet;
+    std::map<int,int> index;
 };
 
 class FullReader: public ReaderBase{
@@ -299,42 +322,46 @@ protected:
             grOffset[D] = new TGraphErrors();
         }
 
-        if( nPlotPerCanvas > nVar ) nPlotPerCanvas = nVar;
-        for( int iCan = 0; iCan < nVar/nPlotPerCanvas+1*(nVar%nPlotPerCanvas != 0); iCan++){
+        int nVarToPlot = nVar;
+        nVarToPlot = index.size();
+
+        if( nPlotPerCanvas > nVarToPlot ) nPlotPerCanvas = nVarToPlot;
+
+        for( int iCan = 0; iCan < nVarToPlot/nPlotPerCanvas+1*(nVarToPlot%nPlotPerCanvas != 0); iCan++){
             TCanvas* can = new TCanvas(Form("fullCan_%i",iCan));
             can -> Divide( nPlotPerCanvas, nPlotPerCanvas );
             for(int iPlot = 0;iPlot < nPlotPerCanvas;iPlot++){
                 int iVar = iPlot+iCan*nPlotPerCanvas;
-                if( iVar >= nVar ) break;
+                if( iVar >= nVarToPlot ) break;
                 for(int jPlot = 0; jPlot <= iPlot; jPlot++){
                     int jVar = jPlot+iCan*nPlotPerCanvas;
                     can -> cd( 1+iPlot*nPlotPerCanvas+jPlot );
                     
-                    stackMap[iVar] = new Stack(Form("Param #%i",iVar));
-                    if( iVar==jVar ){
-                        stackMap[iVar] -> push_back( h[iVar] );
-                        std::cout << "h[iVar] : " << h[iVar]->GetName() << std::endl;
+                    stackMap[index[iVar]] = new Stack(Form("Param #%i", index[iVar]));
+                    if( index[iVar]==index[jVar] ){
+                        stackMap[index[iVar]] -> push_back( h[index[jVar]] );
+                        std::cout << "h[iVar] : " << h[index[iVar]]->GetName() << std::endl;
                         
-                        float mean = h[iVar] -> GetMean();
-                        float sigma = h[iVar] -> GetStdDev();
+                        float mean = h[index[iVar]] -> GetMean();
+                        float sigma = h[index[iVar]] -> GetStdDev();
                         TF1* f = new TF1("f","[0]*exp(-pow(([1]-x)/[2],2))", mean - 2*sigma, mean + 2*sigma);
-                        f -> SetParameter(0, h[iVar] -> GetMaximum() );
+                        f -> SetParameter(0, h[index[iVar]] -> GetMaximum() );
                         f -> SetParameter(1, mean );
                         f -> SetParameter(2, sigma );
-                        h[iVar] -> Fit(f,"R0");
-                        stackMap[iVar] -> push_back(f);
+                        h[index[iVar]] -> Fit(f,"R0");
+                        stackMap[index[iVar]] -> push_back(f);
                         if(isToyMC){
-                            stackMap[iVar] -> pushVerticalLine( metadata[ Form("realValues_%i",iVar) ] );
+                            stackMap[index[iVar]] -> pushVerticalLine( metadata[ Form("realValues_%i",index[iVar]) ] );
                             //if( std::abs( f-> GetParameter(1) - metadata[ Form("realValues_%i",iVar) ] ) < 1000 ){
                             if( true ){
-                                Species s = iVar<nVar/2?P:D;
-                                grOffset[s] -> SetPoint(graphCounter[s],iVar-(nVar/2)*(iVar>=nVar/2), f-> GetParameter(1) - metadata[ Form("realValues_%i",iVar) ]);
+                                Species s = index[iVar]<nVar/2?P:D;
+                                grOffset[s] -> SetPoint(graphCounter[s],index[iVar]-(nVar/2)*(index[iVar]>=nVar/2), f-> GetParameter(1) - metadata[ Form("realValues_%i",index[iVar]) ]);
                                 grOffset[s] -> SetPointError(graphCounter[s]++,0, f-> GetParameter(2));
                             }
                         }
                         
-                    } else stackMap[iVar] -> push_back( h2[ std::pair<int, int>(iVar,jVar) ] );
-                    stackMap[iVar] -> draw(gPad);
+                    } else stackMap[index[iVar]] -> push_back( h2[ std::pair<int, int>(index[iVar],index[jVar]) ] );
+                    stackMap[index[iVar]] -> draw(gPad);
                 }
             }
             can -> SaveAs( (resultDir+can->GetName()+".root").c_str() );
@@ -366,9 +393,8 @@ protected:
 
         if( monitorTime ) std::cout << "Time FillHisto : " << (std::clock() - start) / (float)(CLOCKS_PER_SEC / 1000) << " ms" << std::endl;
     }
-    
-
 };
+
 
 class LikelihoodTracer: public ReaderBase{
 public:
@@ -465,11 +491,13 @@ int main(int argc, char** argv){
     std::string dirname = "test";
     std::cout << "argv[1] : " << argv[1] << std::endl;
     int maxChunk = -1, firstChunk = 0, correlationLength = 1;
+    std::vector<int> restrictedSet;
+
     if( argc > 1 ) dirname = argv[1];
 
     ReaderBase *r = NULL;
 
-    while((c =  getopt(argc, argv, "t:c:f:l:")) != EOF)
+    while((c =  getopt(argc, argv, "t:c:f:l:v:")) != EOF)
         {
             switch (c)
                 {
@@ -502,6 +530,11 @@ int main(int argc, char** argv){
                         correlationLength = generalUtils::stringTo<int>(optarg);
                         break;
                     }
+                case 'v':
+                    {
+                        restrictedSet.push_back( generalUtils::stringTo<int>(optarg) );
+                        break;
+                    }
                 }
         }
     
@@ -513,6 +546,7 @@ int main(int argc, char** argv){
     r -> setMaxChunk(maxChunk);
     r -> setFirstChunk(firstChunk);
     r -> setCorrelationLength(correlationLength);
+    if( restrictedSet.size() > 0 ) r -> setRestrictedVariableSet( restrictedSet );
     r -> readAll();
 
 

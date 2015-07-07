@@ -11,6 +11,7 @@ class Matrix
     long unsigned int nRows,nColumns;
     std::vector<float> data;
 public:
+
     Matrix():nRows(0), nColumns(0), data(0) {}
     Matrix(long unsigned int iN, long unsigned int iM): 
         nRows(iN), nColumns(iM),data(nRows*nColumns,0){}
@@ -75,8 +76,20 @@ public:
                 at(iRow,iColumn) = func(get(iRow,iColumn), iRow);
     }
 
+    void map(std::function<float(float)> func)
+    {
+        for(int iColumn = 0; iColumn < nColumns; iColumn++)
+            for(int iRow = 0; iRow < nRows; iRow++) 
+                at(iRow,iColumn) = func(get(iRow,iColumn));
+    }
+
+    void zeroes(){
+        std::fill(data.begin(), data.end(), 0);
+    }
+
     void linearCombination(std::vector<Matrix> &matrixBase, std::vector<float> &lambda)
     {
+
         long unsigned int nMatrices = matrixBase.size();
         for(int iColumn = 0; iColumn < nColumns; iColumn++)
             for(int iRow = 0; iRow < nRows; iRow++)
