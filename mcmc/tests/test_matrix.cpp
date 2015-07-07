@@ -21,12 +21,12 @@ bool test_dot_1()
     Matrix C = A.Dot(B);
 
     bool pass = true;
-    C.map([&pass, &A](float v, int n,int m){pass = pass && (A.get(n,m) == v); return v;});
+    C.map([&pass, &A](float v, int n,int m){pass = pass && (std::abs(A.get(n,m) - v) < 1e-99); return v;});
 
     if(!pass)
     {
         std::cout << __FUNCTION__ << " \033[1;31mFAILED\033[0m:\n";
-        C.map([](float v, int n,int m){std::cout << v << ","; return v;});
+        C.map([](float v){std::cout << v << ","; return v;});
         std::cout << "\n";
     }
     else std::cout << __FUNCTION__ << " \033[1;32mPASSED\033[0m.\n";
@@ -52,12 +52,12 @@ bool test_dot_2()
     Matrix C = A.Dot(B);
 
     bool pass = true;
-    C.map([&pass, &R](float v, int n,int m){pass = pass && (R.get(n,m) == v); return v;});
+    C.map([&pass, &R](float v, int n,int m){pass = pass && (std::abs(R.get(n,m) - v) < 1e-99); return v;});
 
     if(!pass)
     {
         std::cout << __FUNCTION__ << " \033[1;31mFAILED\033[0m\n";
-        C.map([](float v, int n,int m){std::cout << v << ","; return v;});
+        C.map([](float v){std::cout << v << ","; return v;});
         std::cout << "\n";
     }
     else std::cout << __FUNCTION__ << " \033[1;32mPASSED\033[0m.\n";
@@ -77,15 +77,15 @@ bool test_copy()
  
     Matrix B(4,3);
     B = A;
-    A.map([](float v, int n,int m){return 0;});
+    A.zeroes();
 
     bool pass = true;
-    B.map([&pass, &R](float v, int n,int m){pass = pass && (R.get(n,m) == v); return v;});
+    B.map([&pass, &R](float v, int n,int m){pass = pass && (std::abs(R.get(n,m) - v) < 1e-99); return v;});
 
     if(!pass)
     {
         std::cout << __FUNCTION__ << " \033[1;31mFAILED\033[0m\n";
-        B.map([](float v, int n,int m){std::cout << v << ","; return v;});
+        B.map([](float v){std::cout << v << ","; return v;});
         std::cout << "\n";
     }
     else std::cout << __FUNCTION__ << " \033[1;32mPASSED\033[0m.\n";
@@ -105,12 +105,12 @@ bool test_subMatrix(){
     Matrix B = A.subMatrix(3,2,1,1);
     if( B.getNrows() != 3) pass = false;
     if( B.getNcolums() != 2) pass = false;
-    if( B.get(0,0) != 5 ) pass = false;
-    if( B.get(0,1) != 6 ) pass = false;
-    if( B.get(1,0) != 8 ) pass = false;
-    if( B.get(1,1) != 9 ) pass = false;
-    if( B.get(2,0) != 2 ) pass = false;
-    if( B.get(2,1) != 3 ) pass = false;
+    if( std::abs(B.get(0,0) - 5) > 1e-99 ) pass = false;
+    if( std::abs(B.get(0,1) - 6) > 1e-99 ) pass = false;
+    if( std::abs(B.get(1,0) - 8) > 1e-99 ) pass = false;
+    if( std::abs(B.get(1,1) - 9) > 1e-99 ) pass = false;
+    if( std::abs(B.get(2,0) - 2) > 1e-99 ) pass = false;
+    if( std::abs(B.get(2,1) - 3) > 1e-99 ) pass = false;
 
     if(!pass)
         {

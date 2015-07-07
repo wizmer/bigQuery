@@ -1,5 +1,9 @@
+#ifndef _GENERALUTILS__HPP_
+#define _GENERALUTILS__HPP_
+
 #include <string>
 #include <iostream>
+#include <fstream>
 #include <sstream>
 #include <sys/stat.h>
 #include <map>
@@ -24,6 +28,8 @@ namespace generalUtils{
 
     std::string dateTime();
     bool folderExists( std::string folderName );
+    bool fileExists( std::string fileName );
+
     int makeFolder( std::string folderName );
 
     // return STDOUT from the shell command: cmd (but not STDERR)
@@ -59,3 +65,6 @@ namespace generalUtils{
 
     std::string toString(float a);
 }
+
+#endif
+

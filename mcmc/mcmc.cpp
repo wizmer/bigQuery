@@ -99,10 +99,6 @@ public:
         generator.seed(seed);
     }
 
-    void setRegularizationFactor( float _alpha ){
-        regularizationFactor = _alpha;
-    }
-    
     void run(){ loop(); }
     void setSteps(int _nSteps){ nStep = _nSteps; }
     void setVerbose(bool isVerbose){ verbose = isVerbose; }
@@ -304,7 +300,6 @@ int main(int argc, char** argv){
     MCMC<RealDataModel, ProposalFunction > a(name);
     a.setRegularizationFactor(alphaRegularization);
     a.setVerbose(verbose);
-    a.setRegularizationFactor(alphaRegularization);
     if( nStep > 0 ) a.setSteps(nStep);
     a.run();
     std::cout << "sizeof(a) : " << sizeof(a) << std::endl;

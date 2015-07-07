@@ -59,7 +59,7 @@ PDModel::PDModel(
     rgdtBinsT(rT), rgdtBinsM(rM),
     rgdtF_transposed(rM.size()-1, rT.size()-1), betaF(bT.size()-1, bM.size()-1),
     deltaP(bT.size()-1, rT.size()-1), deltaD(bT.size()-1, rT.size()-1),
-    observed(bM.size()-1,rM.size()-1), regularizationFactor(0) 
+    observed(bM.size()-1,rM.size()-1)
 {
     for(int bBin=0; bBin < betaBinsT.size() - 1; bBin++)
         {
@@ -213,6 +213,8 @@ float PDModel::GetRegularizationTerm(const SearchSpace & point){
         smoothness += std::abs(secondDerivativeP[i].first);
         smoothness += std::abs(secondDerivativeD[i].first);
     }
+
+    return smoothness;
 
 }
 

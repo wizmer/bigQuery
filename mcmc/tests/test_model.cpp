@@ -217,19 +217,19 @@ void test_computeDerivative(){
     f.push_back(std::pair<float, float>(std::log10(1)   ,1000));
 
     std::vector<std::pair<float,float>> firstDerivative = getLogDerivative(f);
-    if( firstDerivative[0].first !=  2 ) {
+    if( std::abs(firstDerivative[0].first - 2) > 1e-99 ) {
         std::cout << "firstDerivative[0].first : " << firstDerivative[0].first << std::endl;
         pass = false;
     }
 
-    if( firstDerivative[1].first != -3 ){
+    if( std::abs(firstDerivative[1].first - (-3)) > 1e-99 ){
         std::cout << "firstDerivative[1].first : " << firstDerivative[1].first << std::endl;
         pass = false;
     }
     
     std::vector<std::pair<float,float>> secondDerivative = getLogDerivative(firstDerivative);
 
-    if( secondDerivative[0].first != -5 ){
+    if( std::abs(secondDerivative[0].first - (-5)) > 1e-99 ){
         std::cout << "secondDerivative[0].first : " << secondDerivative[0].first << std::endl;
         pass = false;
     }

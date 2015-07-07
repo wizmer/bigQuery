@@ -134,6 +134,10 @@ namespace generalUtils{
         return S_ISDIR(st.st_mode);
     }
 
+    bool fileExists( std::string fileName ){
+        return( std::ifstream(fileName.c_str()) != NULL );
+    }
+
     int makeFolder( std::string folderName ){
         return mkdir( folderName.c_str() , S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
     }
