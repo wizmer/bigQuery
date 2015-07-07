@@ -328,7 +328,7 @@ protected:
         if( nPlotPerCanvas > nVarToPlot ) nPlotPerCanvas = nVarToPlot;
 
         for( int iCan = 0; iCan < nVarToPlot/nPlotPerCanvas+1*(nVarToPlot%nPlotPerCanvas != 0); iCan++){
-            TCanvas* can = new TCanvas(Form("fullCan_%i",iCan));
+            TCanvas* can = new TCanvas(Form("%s fullCan_%i", filename.c_str(), iCan), Form("%s fullCan_%i",filename.c_str(), iCan));
             can -> Divide( nPlotPerCanvas, nPlotPerCanvas );
             for(int iPlot = 0;iPlot < nPlotPerCanvas;iPlot++){
                 int iVar = iPlot+iCan*nPlotPerCanvas;

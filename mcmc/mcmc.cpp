@@ -64,6 +64,8 @@ std::ostream& operator<<(std::ostream& os, const PDModel::SearchSpace& point)
 template <class Model, class ProposalFunction > 
 class MCMC 
 {
+    typedef typename Model::SearchSpace Space;
+
 public:
     MCMC(std::string name = "mcmc.mcmc"):
         model(),
@@ -92,7 +94,7 @@ public:
             filename = filename+generalUtils::toString(i);
         }
 
-        for(int i = 0;i<nVar;i++) trace.push_back( std::vector<float>(chunkSize) );
+        for(int i = 0;i<nVar;i++) trace[i] = std::vector<float>(chunkSize);
 
         // construct a trivial random generator engine from a time-based seed:
         seed = std::chrono::system_clock::now().time_since_epoch().count();
@@ -106,10 +108,18 @@ public:
         this -> regularizationFactor = _regularizationFactor;
     }
 
+    float GetLogLikelihood(const Space & point){
+        float proposed_log_likelihood = model.GetLogLikelihood(point);
+        float antismoothness = model.GetRegularizationTerm(point);
+        // std::cout << "regularizationFactor : " << regularizationFactor << std::endl;
+        // std::cout << proposed_log_likelihood << "\t" << antismoothness*regularizationFactor << std::endl;
+        proposed_log_likelihood -= regularizationFactor * antismoothness;
+        return proposed_log_likelihood;
+    }
+
     ~MCMC(){}
 
 private:
-    typedef typename Model::SearchSpace Space;
 
     Model model;
 
@@ -219,19 +229,15 @@ private:
 
         saveMetaData();
 
-        current_log_likelihood = model.GetLogLikelihood(initialConditions);
-
+        current_log_likelihood = GetLogLikelihood(initialConditions);
+        
         for( int i = 0; i < nStep; i++)
         {
             if( i%30000 == 0) printf("%i/%i : %i%%\n",i, nStep, int(float(i)/float(nStep)*100));
 
             auto proposed_point = proposalFunction.proposePoint(current_point);
 
-            float proposed_log_likelihood = model.GetLogLikelihood(proposed_point);
-            float antismoothness = model.GetRegularizationTerm(proposed_point);
-            std::cout << "regularizationFactor : " << regularizationFactor << std::endl;
-            std::cout << proposed_log_likelihood << "\t" << antismoothness*regularizationFactor << std::endl;
-            proposed_log_likelihood -= regularizationFactor * antismoothness;
+            float proposed_log_likelihood = GetLogLikelihood(proposed_point);
 
             float the_likelihood_ratio = exp(proposed_log_likelihood-current_log_likelihood);
 
