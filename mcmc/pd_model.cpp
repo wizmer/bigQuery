@@ -52,15 +52,20 @@ float getOverlap(float a0,float a1,float b0,float b1){
 PDModel::PDModel( 
                  const std::vector<float> & bT, const std::vector<float> & bM,  
                  const std::vector<float> & rT, const std::vector<float> & rM,
-                 const MatrixF & _betaF, const MatrixF & _rgdtF
-                  ):
+                 const MatrixF & _betaF, const MatrixF & _rgdtF, const MatrixB & _mask):
     matrixBase((bT.size()-1)*2),
     betaBinsT(bT), betaBinsM(bM), 
     rgdtBinsT(rT), rgdtBinsM(rM),
     rgdtF_transposed(rM.size()-1, rT.size()-1), betaF(bT.size()-1, bM.size()-1),
     deltaP(bT.size()-1, rT.size()-1), deltaD(bT.size()-1, rT.size()-1),
-    observed(bM.size()-1,rM.size()-1)
+                                                                     observed(bM.size()-1,rM.size()-1), 
+                                                                     mask(bM.size()-1,rM.size()-1)
 {
+    init(_betaF,_rgdtF);
+    SetMask(_mask);
+}
+
+void PDModel::init(const MatrixF & _betaF, const MatrixF & _rgdtF){
     for(int bBin=0; bBin < betaBinsT.size() - 1; bBin++)
         {
             for(int rBin=0; rBin < rgdtBinsT.size() - 1; rBin++)
@@ -75,29 +80,32 @@ PDModel::PDModel(
                     //if( bBin == betaBinsTs
                 }
         }
-
+    
     SetRigidityResolution(_rgdtF);
     SetBetaResolution(_betaF);
 
     constructBaseMatrices();
-
 }
 
-    PDModel PDModel::FromCSVS(const std::string & betaFile, const std::string & rgdtFile, int nTrueBins )
-    {
-        std::fstream beta(betaFile), rgdt(rgdtFile);
-        std::vector<float> rT, rM, bT, bM;
+PDModel PDModel::FromCSVS(const std::string & betaFile, const std::string & rgdtFile, const std::string & maskFile, int nTrueBins )
+{
+    std::fstream beta(betaFile), rgdt(rgdtFile);
+    std::vector<float> rT, rM, bT, bM;
 
-        MatrixF rgdtF = getMatrixAndBins(rgdt, rT, rM).subMatrix(nTrueBins);
-        MatrixF betaF = getMatrixAndBins(beta, bT, bM).subMatrix(nTrueBins);
+    MatrixF _rgdtF = getMatrixAndBins(rgdt, rT, rM).subMatrix(nTrueBins);
+    MatrixF _betaF = getMatrixAndBins(beta, bT, bM).subMatrix(nTrueBins);
+    //    MatrixB _mask = getMask(maskFile).subMatrix(nTrueBins);
 
-        bT = subBinning(bT, nTrueBins+1);
-        rT = subBinning(rT, nTrueBins+1);
+    MatrixB _mask(bM.size()-1,rM.size()-1);
+    if( maskFile != "" ) _mask = getMask(maskFile);
 
-        PDModel model(bT,bM,rT,rM,betaF,rgdtF);
+    bT = subBinning(bT, nTrueBins+1);
+    rT = subBinning(rT, nTrueBins+1);
 
-        return model;
-    }
+    PDModel model(bT,bM,rT,rM,_betaF,_rgdtF,_mask);
+
+    return model;
+}
 
 void PDModel::SetRigidityResolution(const MatrixF & matrix)
 { 
@@ -131,6 +139,22 @@ void PDModel::SetBetaResolution(const MatrixF & matrix)
         }
 
     betaF = matrix.Transpose(); 
+}
+
+void PDModel::SetMask(const MatrixB & _mask)
+{
+    if( _mask.getNrows() != (betaBinsM.size() - 1) || _mask.getNcolums() != (rgdtBinsM.size() - 1) ) 
+        {
+            std::cout <<"Error in " << __FUNCTION__ << "\n";
+            std::cout <<"mask matrix size "
+                      << "(" << _mask.getNrows()
+                      << "," << _mask.getNcolums() << ")\n";
+            std::cout <<"is incompatible with measured beta or rgdt binning size"
+                      << (betaBinsM.size() - 1) << "," << (rgdtBinsM.size() - 1) << ".\n";
+            exit(-1);
+        }
+
+    mask = _mask;
 }
 
 
@@ -190,7 +214,7 @@ float PDModel::GetLogLikelihood(const SearchSpace & point)
     float ret = prediction.applyAndSum(
                                        [this](float expected , int n, int m){
                                            return observed.get(n,m) * log(expected) - expected;
-                                       }
+                                       }, mask
                                        );
     return ret;
 }

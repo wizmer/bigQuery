@@ -33,11 +33,13 @@ bool test_model1()
     MatrixF unitB(betaT.size()-1, betaT.size()-1);
     MatrixF unitR(rgdtT.size()-1, rgdtT.size()-1);
 
+    MatrixB mask(betaT.size()-1, rgdtT.size()-1);
+
     unitB.map([](float, int n, int m){return n==m?1:0;});
     unitR.map([](float, int n, int m){return n==m?1:0;});
 
     // Making a model with two diagonal matrices
-    PDModel model(betaT, betaT, rgdtT, rgdtT, unitB, unitR);
+    PDModel model(betaT, betaT, rgdtT, rgdtT, unitB, unitR, mask);
 
     // Pass unit flux.
     SearchSpace base;
@@ -122,7 +124,7 @@ bool test_model1()
 
 void test_model3(){
     // Test that with identity resolution matrices, the output flux is the input flux
-    PDModel model = PDModel::FromCSVS("datasets/B_identity.csv", "datasets/R_identity.csv",10);
+    PDModel model = PDModel::FromCSVS("datasets/B_identity.csv", "datasets/R_identity.csv","", 10);
 
     int nVar = model.getBetaBinsT().size()-1;
 
@@ -171,7 +173,7 @@ void test_model3(){
 
 // Test that GetPredictionFast works correctly
 void test_model4(){
-    PDModel model = PDModel::FromCSVS("datasets/B_resolution.csv", "datasets/R_resolution.csv");
+    PDModel model = PDModel::FromCSVS("datasets/B_resolution.csv", "datasets/R_resolution.csv","");
     int nVar = model.getBetaBinsT().size()-1;
 
 

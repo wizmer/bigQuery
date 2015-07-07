@@ -28,7 +28,7 @@ public:
     {
         for(int iRow = 0; iRow < nRows; iRow++) 
             for(int iColumn = 0; iColumn < nColumns; iColumn++) 
-                at(iRow,iColumn) = matrix[iRow][iColumn];
+                set(iRow,iColumn, matrix[iRow][iColumn]);
     }
 
     Matrix<T> Dot(const Matrix & rhs) const
@@ -96,12 +96,12 @@ public:
                     at(iRow,iColumn) += matrixBase[iMatrix].get(iRow,iColumn) * lambda[iMatrix];
     }
 
-    T applyAndSum(std::function<T(T,int,int)> func )
+    T applyAndSum(std::function<T(T,int,int)> func, const Matrix<bool> & masked )
     {
         T ret = 0;
         for(int iRow = 0; iRow < nRows; iRow++) {
             for(int iColumn = 0; iColumn < nColumns; iColumn++) {
-                //                if( masked[iRow][iColumn] == true ) continue;
+                if( masked.get(iRow, iColumn) == true ) continue;
                 ret += func(get(iRow,iColumn), iRow, iColumn);
             }
         }
@@ -142,7 +142,7 @@ public:
         Matrix<T> output(_nRows, _nColumns);
         for(int iRow = 0;iRow<_nRows;iRow++){
             for(int iColumn = 0;iColumn<_nColumns;iColumn++){
-                output.at(iRow,iColumn) = this -> get(_firstRow + iRow, _firstColumn + iColumn);
+                output.set(iRow,iColumn, this -> get(_firstRow + iRow, _firstColumn + iColumn));
             }
 	}
         return output;
@@ -186,4 +186,5 @@ public:
 };
 
 typedef Matrix<float> MatrixF;
+typedef Matrix<bool> MatrixB;
 #endif //MATRIX_H
