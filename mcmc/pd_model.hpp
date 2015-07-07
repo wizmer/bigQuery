@@ -5,6 +5,7 @@
 #include <iostream>
 
 #include "Matrix.hpp"
+#include "SearchSpace.hpp"
 
 std::vector< std::pair<float,float> > getLogDerivative(const std::vector< std::pair<float, float> > & point);
 
@@ -21,23 +22,8 @@ class PDModel
     void SetBetaResolution    (const Matrix & matrix);
 
     // Build prediction matrices for all unitary fluxes
-    //void constuctBaseMatrices();
-
-    // Build prediction matrices for all unitary fluxes
     void constructBaseMatrices();
 public:
-
-    struct SearchSpace
-    {
-        SearchSpace(): fluxP(), fluxD(){}
-        ~SearchSpace(){}
-
-        std::vector<float> fluxP;
-        std::vector<float> fluxD;
-        inline long unsigned int size(){return fluxP.size() + fluxD.size();}
-        inline float getRaw(int i){ return i >= fluxP.size()? fluxD[i-fluxP.size()]:fluxP[i]; }
-    };
-
     static const float mp;
     static const float md;
 
@@ -73,8 +59,7 @@ public:
     void GenerateToyObservedData(const SearchSpace & point){
         observed = GetPrediction(point);
     }
-
 };
 
-std::ostream& operator<<(std::ostream& os, const PDModel::SearchSpace& point);
+std::ostream& operator<<(std::ostream& os, const SearchSpace& point);
 #endif //PD_MODEL_H

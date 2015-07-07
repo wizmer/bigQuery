@@ -168,7 +168,7 @@ Matrix PDModel::GetPredictionFast(const SearchSpace & point)
 
 void PDModel::constructBaseMatrices(){
     long unsigned int nVar = rgdtBinsT.size()-1;
-    PDModel::SearchSpace base;
+    SearchSpace base;
     base.fluxP = std::vector<float>(nVar,0);
     base.fluxD = std::vector<float>(nVar,0);
 

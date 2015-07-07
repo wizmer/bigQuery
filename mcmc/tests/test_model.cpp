@@ -40,7 +40,7 @@ bool test_model1()
     PDModel model(betaT, betaT, rgdtT, rgdtT, unitB, unitR);
 
     // Pass unit flux.
-    PDModel::SearchSpace base;
+    SearchSpace base;
     base.fluxP = std::vector<float>(betaT.size()-1,1);
     base.fluxD = std::vector<float>(betaT.size()-1,1);
 
@@ -129,7 +129,7 @@ void test_model3(){
     bool pass = true;
     //for(int k = 0;k<nVar;k++){
     for(int k = 0;k<1;k++){
-        PDModel::SearchSpace base;
+        SearchSpace base;
         base.fluxP = std::vector<float>(nVar,0);
         base.fluxD = std::vector<float>(nVar,0);
  
@@ -176,7 +176,7 @@ void test_model4(){
 
 
     bool pass = true;
-    PDModel::SearchSpace base;
+    SearchSpace base;
     base.fluxP = std::vector<float>(nVar,0);
     base.fluxD = std::vector<float>(nVar,0);
 
