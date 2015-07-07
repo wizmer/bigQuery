@@ -259,6 +259,65 @@ void test_computeDerivative(){
 
 }
 
+bool test_mask()
+{
+    std::vector<float> betaT = { 
+        0.5       , 0.62789539, 0.75579077, 0.84989074, 0.91753928
+    };
+
+
+    std::vector<float> rgdtT = {
+        0.54167002, 0.75689728, 1.08287816, 1.51314916,  2.16483296
+    };
+    // 'Magic' bins above without smearing will result in the two diagonals:
+    V2D resultData = {
+        { 1, 1, 1, 1 },
+        { 1, 1, 1, 1 },
+        { 1, 1, 1, 1 },
+        { 1, 1, 1, 1 } };
+    MatrixF R(betaT.size()-1, rgdtT.size()-1);
+    R.Fill(resultData);
+
+    MatrixF unitB(betaT.size()-1, betaT.size()-1);
+    MatrixF unitR(rgdtT.size()-1, rgdtT.size()-1);
+
+    MatrixB mask(betaT.size()-1, rgdtT.size()-1);
+    
+    unitB.map([](float){return 1;});
+    unitR.map([](float){return 1;});
+
+    // Making a model with two diagonal matrices
+    PDModel model(betaT, betaT, rgdtT, rgdtT, unitB, unitR, mask);
+
+    // Pass unit flux.
+    SearchSpace base;
+    base.fluxP = std::vector<float>(betaT.size()-1,1);
+    base.fluxD = std::vector<float>(betaT.size()-1,1);
+
+    for(int i = 0;i<mask.getNrows();i++){
+        for(int j = 0;j<mask.getNcolums();j++){
+            mask.set(i,j,1);
+            model.SetMask(mask);
+            MatrixF prediction = model.GetPrediction(base);
+            mask.set(i,j,0);
+
+            // Check that sum is 90 and masked element is 0
+            float val =  prediction.applyAndSum(
+                                                [](float v){return v;}
+                                                );
+            if((int)val != 90 || prediction.get(i,j) > 1e-99 ){
+                std::cout << __FUNCTION__ << " \033[1;31mFAILED\033[0m:\n";
+                std::cout << "val : " << val << std::endl;
+                std::cout << "prediction.get(i,j) : " << prediction.get(i,j) << std::endl;
+                return false;
+            }
+	}
+    }
+
+    std::cout << __FUNCTION__ << " \033[1;32mPASSED\033[0m.\n";
+    return true;
+}
+
 int main(void)
 {
     test_model1();
@@ -266,5 +325,6 @@ int main(void)
     test_model3();
     test_model4();
     test_computeDerivative();
+    test_mask();
     return 0;
 }

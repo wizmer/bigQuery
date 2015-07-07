@@ -171,7 +171,7 @@ MatrixF PDModel::GetPrediction(const SearchSpace & point)
     MatrixF smearP = betaF.Dot(fluxMatrixFP.Dot(rgdtF_transposed));
     MatrixF smearD = betaF.Dot(fluxMatrixFD.Dot(rgdtF_transposed));
 
-    smearP.map([&smearD](float v, int b, int r){return v + smearD.get(b,r);});
+    smearP.map([&smearD,this](float v, int b, int r){return (v + smearD.get(b,r))*(!mask.get(b,r));});
 
     // std::cout << "Time : " << (std::clock() - start) / (float)(CLOCKS_PER_SEC) << " s" << std::endl;
     return smearP;
@@ -214,7 +214,7 @@ float PDModel::GetLogLikelihood(const SearchSpace & point)
     float ret = prediction.applyAndSum(
                                        [this](float expected , int n, int m){
                                            return observed.get(n,m) * log(expected) - expected;
-                                       }, mask
+                                       }
                                        );
     return ret;
 }
