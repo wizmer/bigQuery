@@ -4,22 +4,23 @@
 #include <functional>
 #include <iostream>
 #include <fstream>
+#include <cmath>
 
 class Matrix 
 {
-    int nRows,nColumns;
+    long unsigned int nRows,nColumns;
     std::vector<float> data;
 public:
-    Matrix():nRows(0), nColumns(0) {}
-    Matrix(int iN, int iM): 
+    Matrix():nRows(0), nColumns(0), data(0) {}
+    Matrix(long unsigned int iN, long unsigned int iM): 
         nRows(iN), nColumns(iM),data(nRows*nColumns,0){}
 
-    inline int getNrows()   const { return nRows;    }
-    inline int getNcolums() const { return nColumns; }
+    inline long unsigned int getNrows()   const { return nRows;    }
+    inline long unsigned int getNcolums() const { return nColumns; }
 
-    inline float &  at(int row, int column) { return data[row + nRows*column]; }
-    inline float   get(int row, int column) const { return data[row + nRows*column]; }
-    inline void    set(int row, int column, float val) { data[row + nRows*column] = val; }
+    inline float &  at(long unsigned int row, long unsigned int column) { return data[row + nRows*column]; }
+    inline float   get(long unsigned int row, long unsigned int column) const { return data[row + nRows*column]; }
+    inline void    set(long unsigned int row, long unsigned int column, float val) { data[row + nRows*column] = val; }
 
     template<typename T>
     void Fill(T matrix)
@@ -67,9 +68,16 @@ public:
                 at(iRow,iColumn) = func(get(iRow,iColumn), iRow, iColumn);
     }
 
+    void map(std::function<float(float,int)> func)
+    {
+        for(int iColumn = 0; iColumn < nColumns; iColumn++)
+            for(int iRow = 0; iRow < nRows; iRow++) 
+                at(iRow,iColumn) = func(get(iRow,iColumn), iRow);
+    }
+
     void linearCombination(std::vector<Matrix> &matrixBase, std::vector<float> &lambda)
     {
-        int nMatrices = matrixBase.size();
+        long unsigned int nMatrices = matrixBase.size();
         for(int iColumn = 0; iColumn < nColumns; iColumn++)
             for(int iRow = 0; iRow < nRows; iRow++)
                 for(int iMatrix = 0;iMatrix<nMatrices;iMatrix++)
@@ -109,7 +117,8 @@ public:
         f.close();
     }
 
-    Matrix subMatrix(int _nRows, int _nColumns = 0, int _firstRow = 0, int _firstColumn = 0){
+    Matrix subMatrix(long unsigned int _nRows, long unsigned int _nColumns = 0,
+                     long unsigned int _firstRow = 0, long unsigned int _firstColumn = 0){
         if( _nRows <= 0 ) _nRows = this -> nRows;
         if( _nColumns <= 0 ) _nColumns = this -> nColumns;
 
@@ -152,7 +161,7 @@ public:
 
         for(int iColumn = 0; iColumn < nColumns; iColumn++){
             for(int iRow = 0; iRow < nRows; iRow++){
-                if( rhs.get(iRow,iColumn) != get(iRow,iColumn) ) return false;
+                if( std::abs(rhs.get(iRow,iColumn) - get(iRow,iColumn)) > 1e-09 ) return false;
             }
         }
         return true;

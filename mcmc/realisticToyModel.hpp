@@ -6,25 +6,26 @@
 
 #include "pd_model.hpp"
 
-static std::vector< std::pair<float,float> > getLogDerivative(const std::vector< std::pair<float, float> > & point){
-    int nVar = point.size();
+// static std::vector< std::pair<float,float> > getLogDerivative(const std::vector< std::pair<float, float> > & point){
+//     long unsigned int nVar = point.size();
 
-    std::vector< std::pair<float,float> > derivative(nVar-1);
-    for(int i = 0;i<nVar-1;i++){
-        derivative[i].first  = ( point[i+1].first - point[i].first )/ (std::log10(point[i+1].second) - std::log10(point[i].second) );
-        derivative[i].second = std::sqrt(point[i+1].second * point[i].second);
-    }
-    return derivative;
-}
+//     std::vector< std::pair<float,float> > derivative(nVar-1);
+//     for(int i = 0;i<nVar-1;i++){
+//         derivative[i].first  = ( point[i+1].first - point[i].first )/ (std::log10(point[i+1].second) - std::log10(point[i].second) );
+//         derivative[i].second = std::sqrt(point[i+1].second * point[i].second);
+//     }
+//     return derivative;
+// }
 
 struct RealisticToyModel: public PDModel
 {
-    SearchSpace initialConditions;
     SearchSpace realValues;
+    SearchSpace initialConditions;
     static const bool isToyMC = true;
 
     RealisticToyModel():
-        PDModel(PDModel::FromCSVS("datasets/B_resolution.csv", "datasets/R_resolution.csv"))
+        PDModel(PDModel::FromCSVS("datasets/B_resolution.csv", "datasets/R_resolution.csv")),
+        realValues(), initialConditions()
     {
         // Set true values of the model
         for( int i = 0; i < getBetaBinsT().size() - 1; i++){
@@ -44,12 +45,13 @@ struct RealisticToyModel: public PDModel
 
 struct RealDataModel: public PDModel
 {
-    SearchSpace initialConditions;
     SearchSpace realValues;
+    SearchSpace initialConditions;
     static const bool isToyMC = false;
 
     RealDataModel():
-        PDModel(PDModel::FromCSVS("datasets/B_resolution.csv", "datasets/R_resolution.csv"))
+        PDModel(PDModel::FromCSVS("datasets/B_resolution.csv", "datasets/R_resolution.csv")),
+        realValues(), initialConditions()
     {
         // Get initial conditions
         std::ifstream f("initialConditions.txt");
@@ -76,6 +78,8 @@ struct RealDataModel: public PDModel
         // Load real data
         LoadObservedDataFromFile("datasets/observed_data.txt");
     }
+
+    ~RealDataModel(){}
 };
 
 #endif

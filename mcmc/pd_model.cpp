@@ -9,10 +9,10 @@
 // source /afs/cern.ch/sw/lcg/contrib/gcc/4.8/x86_64-slc6/setup.sh
 
 // Kinematics
-const float PDModel::mp = 0.9382;
-const float PDModel::md = 1.8756;
-float R_from_beta(float beta, float m){ return m*beta/sqrt(1-beta*beta); }
-float beta_from_R(float R, float m){ return R/sqrt(R*R+m*m); }
+const float PDModel::mp = (float)0.9382;
+const float PDModel::md = (float)1.8756;
+float R_from_beta(float beta, float m){ return m*beta/(float)sqrt(1-beta*beta); }
+float beta_from_R(float R, float m){ return R/(float)sqrt(R*R+m*m); }
 
 
 std::vector<float> subBinning(const std::vector<float> &bT, int nBins, int firstBin = 0){
@@ -41,12 +41,14 @@ float getOverlap(float a0,float a1,float b0,float b1){
 PDModel::PDModel( 
                  const std::vector<float> & bT, const std::vector<float> & bM,  
                  const std::vector<float> & rT, const std::vector<float> & rM,
-                 const Matrix & betaF, const Matrix & rgdtF
-                  ):    betaBinsT(bT), betaBinsM(bM), betaF(bT.size()-1, bM.size()-1),
-                        rgdtBinsT(rT), rgdtBinsM(rM), rgdtF_transposed(rM.size()-1, rT.size()-1),
-                        deltaP(bT.size()-1, rT.size()-1), deltaD(bT.size()-1, rT.size()-1),
-                        observed(bM.size()-1,rM.size()-1), regularizationFactor(0) 
-                                                                     
+                 const Matrix & _betaF, const Matrix & _rgdtF
+                  ):
+    matrixBase((bT.size()-1)*2),
+    betaBinsT(bT), betaBinsM(bM), 
+    rgdtBinsT(rT), rgdtBinsM(rM),
+    rgdtF_transposed(rM.size()-1, rT.size()-1), betaF(bT.size()-1, bM.size()-1),
+    deltaP(bT.size()-1, rT.size()-1), deltaD(bT.size()-1, rT.size()-1),
+    observed(bM.size()-1,rM.size()-1), regularizationFactor(0) 
 {
     for(int bBin=0; bBin < betaBinsT.size() - 1; bBin++)
         {
@@ -63,28 +65,28 @@ PDModel::PDModel(
                 }
         }
 
-    SetRigidityResolution(rgdtF);
-    SetBetaResolution(betaF);
+    SetRigidityResolution(_rgdtF);
+    SetBetaResolution(_betaF);
 
     constructBaseMatrices();
 
 }
 
-PDModel PDModel::FromCSVS(const std::string & betaFile, const std::string & rgdtFile, int nTrueBins )
-{
-    std::fstream beta(betaFile), rgdt(rgdtFile);
-    std::vector<float> rT, rM, bT, bM;
+    PDModel PDModel::FromCSVS(const std::string & betaFile, const std::string & rgdtFile, int nTrueBins )
+    {
+        std::fstream beta(betaFile), rgdt(rgdtFile);
+        std::vector<float> rT, rM, bT, bM;
 
-    Matrix rgdtF = getMatrixAndBins(rgdt, rT, rM).subMatrix(nTrueBins);
-    Matrix betaF = getMatrixAndBins(beta, bT, bM).subMatrix(nTrueBins);
+        Matrix rgdtF = getMatrixAndBins(rgdt, rT, rM).subMatrix(nTrueBins);
+        Matrix betaF = getMatrixAndBins(beta, bT, bM).subMatrix(nTrueBins);
 
-    bT = subBinning(bT, nTrueBins+1);
-    rT = subBinning(rT, nTrueBins+1);
+        bT = subBinning(bT, nTrueBins+1);
+        rT = subBinning(rT, nTrueBins+1);
 
-    PDModel model(bT,bM,rT,rM,betaF,rgdtF);
+        PDModel model(bT,bM,rT,rM,betaF,rgdtF);
 
-    return model;
-}
+        return model;
+    }
 
 void PDModel::SetRigidityResolution(const Matrix & matrix)
 { 
@@ -126,10 +128,10 @@ Matrix PDModel::GetPrediction(const SearchSpace & point)
     // std::clock_t start = std::clock();
     Matrix fluxMatrixP(deltaP), fluxMatrixD(deltaD);
     
-    fluxMatrixP.map([&point](float v, int row, int r){
-        return v * point.fluxP[row];});
-    fluxMatrixD.map([&point](float v, int b, int r){
-        return v * point.fluxD[b];});
+    fluxMatrixP.map([&point](float v, int row){
+            return v * point.fluxP[row];});
+    fluxMatrixD.map([&point](float v, int b){
+            return v * point.fluxD[b];});
 
     Matrix smearP = betaF.Dot(fluxMatrixP.Dot(rgdtF_transposed));
     Matrix smearD = betaF.Dot(fluxMatrixD.Dot(rgdtF_transposed));
@@ -144,9 +146,8 @@ Matrix PDModel::GetPredictionFast(const SearchSpace & point)
 {
     // std::clock_t start = std::clock();
     Matrix output(betaBinsM.size()-1,rgdtBinsM.size()-1);
-    int nBinsBetaT = betaBinsT.size()-1;
+    long unsigned int nBinsBetaT = betaBinsT.size()-1;
     for(int i = 0;i<nBinsBetaT;i++){
-        float sum = 0;
         output += (matrixBase[i]*point.fluxP[i]);
         output += (matrixBase[i+nBinsBetaT]*point.fluxD[i]);
     }
@@ -155,9 +156,7 @@ Matrix PDModel::GetPredictionFast(const SearchSpace & point)
 }
 
 void PDModel::constructBaseMatrices(){
-    int nVar = betaBinsT.size() -1;
-    matrixBase = std::vector<Matrix>(nVar*2);
-
+    long unsigned int nVar = rgdtBinsT.size()-1;
     PDModel::SearchSpace base;
     base.fluxP = std::vector<float>(nVar,0);
     base.fluxD = std::vector<float>(nVar,0);
@@ -178,10 +177,10 @@ float PDModel::GetLogLikelihood(const SearchSpace & point)
 {
     Matrix prediction = GetPrediction(point);
     float ret = prediction.applyAndSum(
-        [this](float expected , int n, float m){
-            return observed.get(n,m) * log(expected) - expected;
-        }
-    );
+                                       [this](float expected , int n, int m){
+                                           return observed.get(n,m) * log(expected) - expected;
+                                       }
+                                       );
     return ret;
 }
 
@@ -191,16 +190,16 @@ void PDModel::LoadObservedDataFromFile(const std::string & fname)
     std::vector<std::vector<float> > data;
 
     for(int b = 0; b < betaBinsM.size(); b++)
-    {
-        std::vector<float> row;
-        for(int r = 0; r < rgdtBinsM.size(); r++)
         {
-            float v = 0;
-            fs >> v;
-            row.push_back(v);
+            std::vector<float> row;
+            for(int r = 0; r < rgdtBinsM.size(); r++)
+                {
+                    float v = 0;
+                    fs >> v;
+                    row.push_back(v);
+                }
+            data.push_back(row);
         }
-        data.push_back(row);
-    }
 
     Matrix obs(betaBinsM.size()-1,rgdtBinsM.size()-1);
     obs.Fill(data);

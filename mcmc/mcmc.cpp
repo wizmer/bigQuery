@@ -23,7 +23,8 @@ class ProposalFunction {
     std::vector<float> sigmaP, sigmaD;
 public: 
     typedef PDModel::SearchSpace Space;
-    ProposalFunction(const Space & initialPoint)
+    ProposalFunction(const Space & initialPoint):
+        sigmaP(), sigmaD()
     {
         for(auto v : initialPoint.fluxP){
             
@@ -65,11 +66,23 @@ class MCMC
 {
 public:
     MCMC(std::string name = "mcmc.mcmc"):
-        initialConditions(model.initialConditions),
+        model(),
         realValues(model.realValues),
-        proposalFunction(model.initialConditions)
+        current_point(model.initialConditions),
+        initialConditions(model.initialConditions),
+        proposalFunction(model.initialConditions),
+        nVar(initialConditions.size()),
+        log_likelihood(chunkSize),
+        trace(nVar),
+        filename(name),
+        current_log_likelihood(0),
+        regularizationFactor(0),
+        seed(0),
+        chunkStepNumber(0),
+        nThreads(1), nStep(100),
+        chunkSize(maxRAM / ( (nVar+1)*sizeof(float)) / nThreads),
+        verbose(false)
     {
-        filename = name;
 
         if( mkdir(filename.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH) != 0){
             int i = 0;
@@ -78,20 +91,8 @@ public:
             }
             filename = filename+generalUtils::toString(i);
         }
-        
-        verbose = false;
-
-        chunkStepNumber = 0;
-        nVar = initialConditions.size();
-        nStep=100;
-        nThreads = 1;
-        chunkSize = maxRAM / ( (nVar+1)*sizeof(float)) / nThreads;
-
-        current_point = initialConditions;
 
         for(int i = 0;i<nVar;i++) trace.push_back( std::vector<float>(chunkSize) );
-        log_likelihood.reserve(chunkSize);
-
 
         // construct a trivial random generator engine from a time-based seed:
         seed = std::chrono::system_clock::now().time_since_epoch().count();
@@ -106,36 +107,43 @@ public:
     void run(){ loop(); }
     void setSteps(int _nSteps){ nStep = _nSteps; }
     void setVerbose(bool isVerbose){ verbose = isVerbose; }
+    void setRegularizationFactor(float _regularizationFactor){
+        this -> regularizationFactor = _regularizationFactor;
+    }
+
+    ~MCMC(){}
 
 private:
-    int chunkSize;
-    int nVar;
-
-    std::string filename;
-
-    bool verbose;
-    int nStep;
-    unsigned seed;
-    float current_log_likelihood;
+    typedef typename Model::SearchSpace Space;
 
     Model model;
 
-    typedef typename Model::SearchSpace Space;
     Space realValues;
     Space current_point;
     Space initialConditions;
 
     ProposalFunction proposalFunction;
 
+    unsigned int nVar;
+
     // Raw data 
     std::vector<float> log_likelihood;
     std::vector< std::vector<float> > trace;
 
-    int chunkStepNumber;
-    int nThreads;
+    std::string filename;
+
+    float current_log_likelihood;
+    float regularizationFactor;
+
+    unsigned int seed;
+    unsigned int chunkStepNumber;
+    unsigned int nThreads;
+    unsigned int nStep;
+    unsigned int chunkSize;
+
+    bool verbose;
+
     static const int maxRAM = 1e9;
-
-
 
     void saveMetaData()
     {
@@ -255,6 +263,7 @@ private:
     }
 
 
+
 };
 
 int main(int argc, char** argv){
@@ -280,6 +289,8 @@ int main(int argc, char** argv){
                 case 'a':
                     alphaRegularization = generalUtils::stringTo<float>(optarg);
                     break;
+                default:
+                    break;
                 }
         }
 
@@ -287,7 +298,7 @@ int main(int argc, char** argv){
 
     //    MCMC<RealisticToyModel, ProposalFunction > a(name);
     MCMC<RealDataModel, ProposalFunction > a(name);
-
+    a.setRegularizationFactor(alphaRegularization);
     a.setVerbose(verbose);
     if( nStep > 0 ) a.setSteps(nStep);
     a.run();

@@ -1,6 +1,3 @@
-#ifndef GENERAL_UTILS_H
-#define GENERAL_UTILS_H
-
 #include <string>
 #include <iostream>
 #include <sstream>
@@ -61,6 +58,4 @@ namespace generalUtils{
     }
 
     std::string toString(float a);
-};
-
-#endif
+}

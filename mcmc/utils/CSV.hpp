@@ -7,8 +7,11 @@ std::vector<float> getRow(float & first, std::string str)
     float value;
 
     getline(ss, entry, ',');
-    std::stringstream se(entry);
-    if(!(se >> first)) first = 0;
+
+    {
+        std::stringstream se(entry);
+        if(!(se >> first)) first = 0;
+    }
 
     while (getline(ss, entry, ','))
     {
@@ -46,7 +49,7 @@ Matrix getMatrixAndBins( std::fstream & fs,
         sums.push_back(sum);
     }
 
-    M.map([&sums](float v, int t, int m){return v/(sums[t]>0?sums[t]:1);});
+    M.map([&sums](float v, int t ){return v/(sums[t]>0?sums[t]:1);});
 
 
     return M;

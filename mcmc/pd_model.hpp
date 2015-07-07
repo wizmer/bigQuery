@@ -9,6 +9,7 @@
 
 class PDModel
 {
+    std::vector<Matrix> matrixBase;
     std::vector<float> betaBinsT, betaBinsM;
     std::vector<float> rgdtBinsT, rgdtBinsM;
     Matrix rgdtF_transposed,  betaF;
@@ -26,14 +27,17 @@ class PDModel
     // Build prediction matrices for all unitary fluxes
     void constructBaseMatrices();
 public:
-    std::vector<Matrix> matrixBase;
 
     struct SearchSpace
     {
+        SearchSpace(): fluxP(), fluxD(){}
+        ~SearchSpace(){}
+
         std::vector<float> fluxP;
         std::vector<float> fluxD;
-        inline int size(){return fluxP.size() + fluxD.size();}
+        inline long unsigned int size(){return fluxP.size() + fluxD.size();}
         inline float getRaw(int i){ return i >= fluxP.size()? fluxD[i-fluxP.size()]:fluxP[i]; }
+
     };
 
     static const float mp;
@@ -43,6 +47,8 @@ public:
     PDModel( const std::vector<float> & bT, const std::vector<float> & bM, 
              const std::vector<float> & rT, const std::vector<float> & rM,
              const Matrix & betaF, const Matrix & rgdtF);
+
+    virtual ~PDModel(){}
 
     static PDModel FromCSVS(const std::string & betaFile, const std::string & rgdtFile, int maxTrueBinNumber = 0 );
 
