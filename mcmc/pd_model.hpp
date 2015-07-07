@@ -18,11 +18,17 @@ class PDModel
     MatrixF deltaP, deltaD;
     MatrixF observed;
 
+    MatrixB mask;
+
     void SetRigidityResolution(const MatrixF & matrix);
     void SetBetaResolution    (const MatrixF & matrix);
+    void SetMask(const MatrixB & _mask);
+    void SetMask(const std::string & fname);
 
     // Build prediction matrices for all unitary fluxes
     void constructBaseMatrices();
+
+    void init(const MatrixF & _betaF, const MatrixF & _rgdtF);
 public:
     static const float mp;
     static const float md;
@@ -30,11 +36,11 @@ public:
     // Initializations 
     PDModel( const std::vector<float> & bT, const std::vector<float> & bM, 
              const std::vector<float> & rT, const std::vector<float> & rM,
-             const MatrixF & betaF, const MatrixF & rgdtF);
+             const MatrixF & betaF, const MatrixF & rgdtF, const MatrixB & mask);
 
     virtual ~PDModel(){}
 
-    static PDModel FromCSVS(const std::string & betaFile, const std::string & rgdtFile, int maxTrueBinNumber = 0 );
+    static PDModel FromCSVS(const std::string & betaFile, const std::string & rgdtFile, const std::string & maskFile, int maxTrueBinNumber = 0 );
 
     // Getters
     inline std::vector<float> getBetaBinsT(){ return betaBinsT; }

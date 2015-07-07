@@ -25,7 +25,7 @@ struct RealisticToyModel: public PDModel
     static const bool isToyMC = true;
 
     RealisticToyModel():
-        PDModel(PDModel::FromCSVS("datasets/B_resolution.csv", "datasets/R_resolution.csv")),
+        PDModel(PDModel::FromCSVS("datasets/B_resolution.csv", "datasets/R_resolution.csv","datasets/mask.csv" )),
         realValues(), initialConditions()
     {
         // Set true values of the model
@@ -47,7 +47,7 @@ struct RealDataModel: public PDModel
     static const bool isToyMC = false;
 
     RealDataModel():
-        PDModel(PDModel::FromCSVS("datasets/B_resolution.csv", "datasets/R_resolution.csv")),
+        PDModel(PDModel::FromCSVS("datasets/B_resolution.csv", "datasets/R_resolution.csv", "datasets/mask.csv")),
         realValues(), initialConditions()
     {
         // Get initial conditions

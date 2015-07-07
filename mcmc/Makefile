@@ -2,7 +2,7 @@ INCLUDE=-I./utils -I$(amsUtils)/include -I.
 AMSSTATICLIBS := -L$(AMSWD)/lib/linuxx8664gcc5.34 -lntuple_slc6_PG
 LIBS=`root-config --cflags --libs | sed 's/-lPhysics//g' | sed 's/-lGraf3d//g' | sed 's/-lPostscript//g' `  -L$(amsUtils)/lib
 #LIBS=`root-config --cflags --libs`
-OPTIMIZATION=-O3
+OPTIMIZATION=-g
 CXXFLAGS=-Wall -Weffc++ -pedantic -Wno-sign-compare \
     -pedantic-errors -Wextra -Wcast-align \
     -Wcast-qual  -Wchar-subscripts  -Wcomment \
@@ -40,10 +40,10 @@ generalUtils.o: utils/generalUtils.cpp utils/generalUtils.hpp
 pd_model.o: pd_model.cpp  pd_model.hpp
 	g++ ${OPTIMIZATION} $(CXXFLAGS) ${INCLUDE} -c $< -std=c++11 
 
-test_matrix: tests/test_matrix.cpp utils/Matrix.hpp 
+test_matrix: tests/test_matrix.cpp utils/Matrix.hpp  generalUtils.o
 	g++ ${INCLUDE} $(CXXFLAGS) -o $@ $< -std=c++11 
 
-test_model: tests/test_model.cpp pd_model.o
+test_model: tests/test_model.cpp pd_model.o generalUtils.o
 	g++ ${INCLUDE} $(CXXFLAGS) -o $@ $^ -std=c++11 
 
 clean:
