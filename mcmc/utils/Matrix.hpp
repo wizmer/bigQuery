@@ -6,10 +6,10 @@
 #include <fstream>
 #include <cmath>
 
-class Matrix 
+template <typename T> class Matrix 
 {
     long unsigned int nRows,nColumns;
-    std::vector<float> data;
+    std::vector<T> data;
 public:
 
     Matrix():nRows(0), nColumns(0), data(0) {}
@@ -19,19 +19,19 @@ public:
     inline long unsigned int getNrows()   const { return nRows;    }
     inline long unsigned int getNcolums() const { return nColumns; }
 
-    inline float &  at(long unsigned int row, long unsigned int column) { return data[row + nRows*column]; }
-    inline float   get(long unsigned int row, long unsigned int column) const { return data[row + nRows*column]; }
-    inline void    set(long unsigned int row, long unsigned int column, float val) { data[row + nRows*column] = val; }
+    inline T &  at(long unsigned int row, long unsigned int column) { return data[row + nRows*column]; }
+    inline T   get(long unsigned int row, long unsigned int column) const { return data[row + nRows*column]; }
+    inline void    set(long unsigned int row, long unsigned int column, T val) { data[row + nRows*column] = val; }
 
-    template<typename T>
-    void Fill(T matrix)
+    template<typename M>
+    void Fill(M matrix)
     {
         for(int iRow = 0; iRow < nRows; iRow++) 
             for(int iColumn = 0; iColumn < nColumns; iColumn++) 
                 at(iRow,iColumn) = matrix[iRow][iColumn];
     }
 
-    Matrix Dot(const Matrix & rhs) const
+    Matrix<T> Dot(const Matrix & rhs) const
     {
         //if(nColumns != rhs.nRows)
         //{
@@ -41,10 +41,10 @@ public:
         //    exit(1);
         //}
 
-        Matrix ret(nRows, rhs.nColumns);
+        Matrix<T> ret(nRows, rhs.nColumns);
         for(int iRhsColumn = 0; iRhsColumn < rhs.nColumns; iRhsColumn++){
             for(int iLhsColumn = 0; iLhsColumn < nColumns; iLhsColumn++){
-                float val = rhs.get(iLhsColumn,iRhsColumn);
+                T val = rhs.get(iLhsColumn,iRhsColumn);
                 for(int n = 0; n < nRows; n++){
                     ret.at(n,iRhsColumn) += get(n,iLhsColumn)* val;
                 }
@@ -53,23 +53,23 @@ public:
         return ret;
     }
 
-    Matrix Transpose() const
+    Matrix<T> Transpose() const
     {
-        Matrix ret(nColumns, nRows);
+        Matrix<T> ret(nColumns, nRows);
         for(int iColumn = 0; iColumn < nColumns; iColumn++)
             for(int iRow = 0; iRow < nRows; iRow++) 
                 ret.at(iColumn,iRow) = get(iRow,iColumn);
         return ret;
     }
 
-    void map(std::function<float(float,int,int)> func)
+    void map(std::function<T(T,int,int)> func)
     {
         for(int iColumn = 0; iColumn < nColumns; iColumn++)
             for(int iRow = 0; iRow < nRows; iRow++) 
                 at(iRow,iColumn) = func(get(iRow,iColumn), iRow, iColumn);
     }
 
-    void map(std::function<float(float,int)> func)
+    void map(std::function<T(T,int)> func)
     {
         for(int iColumn = 0; iColumn < nColumns; iColumn++)
             for(int iRow = 0; iRow < nRows; iRow++) 
@@ -87,9 +87,8 @@ public:
         std::fill(data.begin(), data.end(), 0);
     }
 
-    void linearCombination(std::vector<Matrix> &matrixBase, std::vector<float> &lambda)
+    void linearCombination(std::vector<Matrix<T>> &matrixBase, std::vector<float> &lambda)
     {
-
         long unsigned int nMatrices = matrixBase.size();
         for(int iColumn = 0; iColumn < nColumns; iColumn++)
             for(int iRow = 0; iRow < nRows; iRow++)
@@ -97,11 +96,12 @@ public:
                     at(iRow,iColumn) += matrixBase[iMatrix].get(iRow,iColumn) * lambda[iMatrix];
     }
 
-    float applyAndSum(std::function<float(float,int,int)> func)
+    T applyAndSum(std::function<T(T,int,int)> func )
     {
-        float ret = 0;
+        T ret = 0;
         for(int iRow = 0; iRow < nRows; iRow++) {
             for(int iColumn = 0; iColumn < nColumns; iColumn++) {
+                //                if( masked[iRow][iColumn] == true ) continue;
                 ret += func(get(iRow,iColumn), iRow, iColumn);
             }
         }
@@ -130,8 +130,8 @@ public:
         f.close();
     }
 
-    Matrix subMatrix(long unsigned int _nRows, long unsigned int _nColumns = 0,
-                     long unsigned int _firstRow = 0, long unsigned int _firstColumn = 0){
+    Matrix<T> subMatrix(long unsigned int _nRows, long unsigned int _nColumns = 0,
+                        long unsigned int _firstRow = 0, long unsigned int _firstColumn = 0){
         if( _nRows <= 0 ) _nRows = this -> nRows;
         if( _nColumns <= 0 ) _nColumns = this -> nColumns;
 
@@ -139,7 +139,7 @@ public:
             std::cout << "Cannot make a submatrix with such dimensions" << std::endl;
             exit(-1);
         }
-        Matrix output(_nRows, _nColumns);
+        Matrix<T> output(_nRows, _nColumns);
         for(int iRow = 0;iRow<_nRows;iRow++){
             for(int iColumn = 0;iColumn<_nColumns;iColumn++){
                 output.at(iRow,iColumn) = this -> get(_firstRow + iRow, _firstColumn + iColumn);
@@ -148,8 +148,8 @@ public:
         return output;
     }
 
-    inline Matrix operator*(float scale){
-        Matrix output(nRows,nColumns);
+    inline Matrix<T> operator*(float scale){
+        Matrix<T> output(nRows,nColumns);
         for(int iColumn = 0; iColumn < nColumns; iColumn++){
             for(int iRow = 0; iRow < nRows; iRow++){
                 output.at(iRow,iColumn) = scale * get(iRow,iColumn);
@@ -159,7 +159,7 @@ public:
     }
 
 
-    inline Matrix operator+=(const Matrix &rhs){
+    inline Matrix<T> operator+=(const Matrix &rhs){
         for(int iColumn = 0; iColumn < nColumns; iColumn++){
             for(int iRow = 0; iRow < nRows; iRow++){
                 at(iRow,iColumn) += rhs.get(iRow,iColumn);
@@ -180,10 +180,10 @@ public:
         return true;
     }
 
-    inline bool operator!=(const Matrix &rhs){
+    inline bool operator!=(const Matrix<T> &rhs){
         return !operator==(rhs);
     }
 };
 
-
+typedef Matrix<float> MatrixF;
 #endif //MATRIX_H

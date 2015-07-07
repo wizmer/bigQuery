@@ -11,15 +11,15 @@ std::vector< std::pair<float,float> > getLogDerivative(const std::vector< std::p
 
 class PDModel
 {
-    std::vector<Matrix> matrixBase;
+    std::vector<MatrixF> matrixBase;
     std::vector<float> betaBinsT, betaBinsM;
     std::vector<float> rgdtBinsT, rgdtBinsM;
-    Matrix rgdtF_transposed,  betaF;
-    Matrix deltaP, deltaD;
-    Matrix observed;
+    MatrixF rgdtF_transposed,  betaF;
+    MatrixF deltaP, deltaD;
+    MatrixF observed;
 
-    void SetRigidityResolution(const Matrix & matrix);
-    void SetBetaResolution    (const Matrix & matrix);
+    void SetRigidityResolution(const MatrixF & matrix);
+    void SetBetaResolution    (const MatrixF & matrix);
 
     // Build prediction matrices for all unitary fluxes
     void constructBaseMatrices();
@@ -30,7 +30,7 @@ public:
     // Initializations 
     PDModel( const std::vector<float> & bT, const std::vector<float> & bM, 
              const std::vector<float> & rT, const std::vector<float> & rM,
-             const Matrix & betaF, const Matrix & rgdtF);
+             const MatrixF & betaF, const MatrixF & rgdtF);
 
     virtual ~PDModel(){}
 
@@ -43,10 +43,10 @@ public:
     inline std::vector<float> getRgdtBinsM(){ return rgdtBinsM; }
 
     // Predictions
-    Matrix GetPrediction(const SearchSpace & point);
+    MatrixF GetPrediction(const SearchSpace & point);
 
     // Perform a linear combination of base matrices
-    Matrix GetPredictionFast(const SearchSpace & point);
+    MatrixF GetPredictionFast(const SearchSpace & point);
 
     // Log likelihood
     float GetLogLikelihood(const SearchSpace & point);

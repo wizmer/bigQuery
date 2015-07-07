@@ -52,7 +52,7 @@ float getOverlap(float a0,float a1,float b0,float b1){
 PDModel::PDModel( 
                  const std::vector<float> & bT, const std::vector<float> & bM,  
                  const std::vector<float> & rT, const std::vector<float> & rM,
-                 const Matrix & _betaF, const Matrix & _rgdtF
+                 const MatrixF & _betaF, const MatrixF & _rgdtF
                   ):
     matrixBase((bT.size()-1)*2),
     betaBinsT(bT), betaBinsM(bM), 
@@ -88,8 +88,8 @@ PDModel::PDModel(
         std::fstream beta(betaFile), rgdt(rgdtFile);
         std::vector<float> rT, rM, bT, bM;
 
-        Matrix rgdtF = getMatrixAndBins(rgdt, rT, rM).subMatrix(nTrueBins);
-        Matrix betaF = getMatrixAndBins(beta, bT, bM).subMatrix(nTrueBins);
+        MatrixF rgdtF = getMatrixAndBins(rgdt, rT, rM).subMatrix(nTrueBins);
+        MatrixF betaF = getMatrixAndBins(beta, bT, bM).subMatrix(nTrueBins);
 
         bT = subBinning(bT, nTrueBins+1);
         rT = subBinning(rT, nTrueBins+1);
@@ -99,7 +99,7 @@ PDModel::PDModel(
         return model;
     }
 
-void PDModel::SetRigidityResolution(const Matrix & matrix)
+void PDModel::SetRigidityResolution(const MatrixF & matrix)
 { 
     if( matrix.getNrows() != (rgdtBinsT.size() - 1) ) 
         {
@@ -117,7 +117,7 @@ void PDModel::SetRigidityResolution(const Matrix & matrix)
 }
 
 
-void PDModel::SetBetaResolution(const Matrix & matrix)
+void PDModel::SetBetaResolution(const MatrixF & matrix)
 {
     if( matrix.getNrows() != (betaBinsT.size() - 1) ) 
         {
@@ -134,18 +134,18 @@ void PDModel::SetBetaResolution(const Matrix & matrix)
 }
 
 
-Matrix PDModel::GetPrediction(const SearchSpace & point)
+MatrixF PDModel::GetPrediction(const SearchSpace & point)
 {
     // std::clock_t start = std::clock();
-    Matrix fluxMatrixP(deltaP), fluxMatrixD(deltaD);
+    MatrixF fluxMatrixFP(deltaP), fluxMatrixFD(deltaD);
     
-    fluxMatrixP.map([&point](float v, int row){
+    fluxMatrixFP.map([&point](float v, int row){
             return v * point.fluxP[row];});
-    fluxMatrixD.map([&point](float v, int b){
+    fluxMatrixFD.map([&point](float v, int b){
             return v * point.fluxD[b];});
 
-    Matrix smearP = betaF.Dot(fluxMatrixP.Dot(rgdtF_transposed));
-    Matrix smearD = betaF.Dot(fluxMatrixD.Dot(rgdtF_transposed));
+    MatrixF smearP = betaF.Dot(fluxMatrixFP.Dot(rgdtF_transposed));
+    MatrixF smearD = betaF.Dot(fluxMatrixFD.Dot(rgdtF_transposed));
 
     smearP.map([&smearD](float v, int b, int r){return v + smearD.get(b,r);});
 
@@ -153,10 +153,10 @@ Matrix PDModel::GetPrediction(const SearchSpace & point)
     return smearP;
 }
 
-Matrix PDModel::GetPredictionFast(const SearchSpace & point)
+MatrixF PDModel::GetPredictionFast(const SearchSpace & point)
 {
     // std::clock_t start = std::clock();
-    Matrix output(betaBinsM.size()-1,rgdtBinsM.size()-1);
+    MatrixF output(betaBinsM.size()-1,rgdtBinsM.size()-1);
     long unsigned int nBinsBetaT = betaBinsT.size()-1;
     for(int i = 0;i<nBinsBetaT;i++){
         output += (matrixBase[i]*point.fluxP[i]);
@@ -186,7 +186,7 @@ void PDModel::constructBaseMatrices(){
 
 float PDModel::GetLogLikelihood(const SearchSpace & point)
 {
-    Matrix prediction = GetPrediction(point);
+    MatrixF prediction = GetPrediction(point);
     float ret = prediction.applyAndSum(
                                        [this](float expected , int n, int m){
                                            return observed.get(n,m) * log(expected) - expected;
@@ -236,7 +236,7 @@ void PDModel::LoadObservedDataFromFile(const std::string & fname)
             data.push_back(row);
         }
 
-    Matrix obs(betaBinsM.size()-1,rgdtBinsM.size()-1);
+    MatrixF obs(betaBinsM.size()-1,rgdtBinsM.size()-1);
     obs.Fill(data);
     observed = obs;
 }

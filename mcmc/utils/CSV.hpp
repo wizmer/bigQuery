@@ -22,7 +22,7 @@ std::vector<float> getRow(float & first, std::string str)
     return row;
 }
 
-Matrix getMatrixAndBins( std::fstream & fs, 
+MatrixF getMatrixAndBins( std::fstream & fs, 
     std::vector<float>& binsT, std::vector<float>& binsM )
 {
     float first;
@@ -38,7 +38,7 @@ Matrix getMatrixAndBins( std::fstream & fs,
         binsT.push_back(first);
     }
 
-    Matrix M(binsT.size()-1, binsM.size()-1);
+    MatrixF M(binsT.size()-1, binsM.size()-1);
     M.Fill(data);
 
     std::vector<float> sums;

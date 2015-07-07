@@ -26,12 +26,12 @@ bool test_model1()
         { 0, 0, 0, 0, 0, 0, 1, 0, 1 },
         { 0, 0, 0, 0, 0, 0, 0, 1, 0 },
         { 0, 0, 0, 0, 0, 0, 0, 0, 1 } };
-    Matrix R(betaT.size()-1, rgdtT.size()-1);
+    MatrixF R(betaT.size()-1, rgdtT.size()-1);
     R.Fill(resultData);
 
 
-    Matrix unitB(betaT.size()-1, betaT.size()-1);
-    Matrix unitR(rgdtT.size()-1, rgdtT.size()-1);
+    MatrixF unitB(betaT.size()-1, betaT.size()-1);
+    MatrixF unitR(rgdtT.size()-1, rgdtT.size()-1);
 
     unitB.map([](float, int n, int m){return n==m?1:0;});
     unitR.map([](float, int n, int m){return n==m?1:0;});
@@ -44,7 +44,7 @@ bool test_model1()
     base.fluxP = std::vector<float>(betaT.size()-1,1);
     base.fluxD = std::vector<float>(betaT.size()-1,1);
 
-    Matrix prediction = model.GetPrediction(base);
+    MatrixF prediction = model.GetPrediction(base);
 
     // Test
     
@@ -83,14 +83,14 @@ bool test_model1()
 //         { 0.0, 0.0, 0.0, 0.0, 0.0, 0.5, 0.5, 0.5, 0.5 },
 //         { 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.5, 0.5, 0.5 },
 //         { 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.5, 0.5 } };
-//     Matrix R(betaT.size()-1, rgdtT.size()-1);
+//     MatrixF R(betaT.size()-1, rgdtT.size()-1);
 //     R.Fill(resultData);
 
 //     // Making a model with beta smearing 
 //     PDModel model(betaT, betaT, rgdtT, rgdtT);
 
-//     Matrix unitB(betaT.size()-1, betaT.size()-1);
-//     Matrix unitR(rgdtT.size()-1, rgdtT.size()-1);
+//     MatrixF unitB(betaT.size()-1, betaT.size()-1);
+//     MatrixF unitR(rgdtT.size()-1, rgdtT.size()-1);
 
 //     unitB.map([](float, int n, int m){return n==m?0.5:n-m==1?0.5:0;});
 //     unitR.map([](float, int n, int m){return n==m?1:0;});
@@ -100,7 +100,7 @@ bool test_model1()
 
 //     // Pass unit flux. 
 //     std::vector<float> unitFlux(betaT.size()-1, 1);
-//     Matrix prediction = model.GetPrediction(&unitFlux[0],&unitFlux[0]);
+//     MatrixF prediction = model.GetPrediction(&unitFlux[0],&unitFlux[0]);
 
 //     // Test
     
@@ -135,7 +135,7 @@ void test_model3(){
  
         base.fluxP[k] = 1;
         
-        Matrix matrix = model.GetPrediction(base);
+        MatrixF matrix = model.GetPrediction(base);
   
         if( matrix.getNrows() != model.getBetaBinsM().size()-1 ){
             std::cout << "wrong beta bin dimension" << std::endl;
@@ -186,8 +186,8 @@ void test_model4(){
     }
 
 
-    Matrix A = model.GetPrediction(base);
-    Matrix B = model.GetPredictionFast(base);
+    MatrixF A = model.GetPrediction(base);
+    MatrixF B = model.GetPredictionFast(base);
 
     for(int i = 0;i<A.getNrows();i++){
         for(int j = 0;j<A.getNcolums();j++){
