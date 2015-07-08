@@ -12,6 +12,5 @@ struct SearchSpace
     inline float getRaw(int i){ return i >= fluxP.size()? fluxD[i-fluxP.size()]:fluxP[i]; }
 };
 
-
 #endif
 

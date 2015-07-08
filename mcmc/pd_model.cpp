@@ -9,6 +9,18 @@ const float PDModel::md = (float)1.8756;
 float R_from_beta(float beta, float m){ return m*beta/(float)sqrt(1-beta*beta); }
 float beta_from_R(float R, float m){ return R/(float)sqrt(R*R+m*m); }
 
+std::ostream& operator<<(std::ostream& os, const SearchSpace& point)
+{
+    os << "fluxP ";
+    for(auto v : point.fluxP) os << v << " ";
+    os << "\n";
+    os << "fluxD ";
+    for(auto v : point.fluxD) os << v << " ";
+    return os;
+}
+
+
+
 std::vector< std::pair<float,float> > getLogDerivative(const std::vector< std::pair<float, float> > & point){
     int nVar = point.size();
 
@@ -55,7 +67,8 @@ PDModel::PDModel(
     deltaP(bT.size()-1, rT.size()-1), deltaD(bT.size()-1, rT.size()-1),
                                                                      observed(bM.size()-1,rM.size()-1), 
                                                                      mask(bM.size()-1,rM.size()-1),
-                                                                     regularizationFactor(0)
+                                                                     regularizationFactor(0),
+                                                                     regularizationTerm(0)
 {
     SetMask(_mask);
     init(_betaF,_rgdtF);
@@ -157,7 +170,6 @@ void PDModel::SetMask(const MatrixB & _mask)
     mask = _mask;
 }
 
-
 MatrixF PDModel::GetPrediction(const SearchSpace & point)
 {
     // std::clock_t start = std::clock();
@@ -218,12 +230,13 @@ float PDModel::GetLogLikelihood(const SearchSpace & point)
                                        }
                                        );
 
-    ret -= regularizationFactor * GetRegularizationTerm(point);
+    ComputeRegularizationTerm(point);
+    ret -= regularizationTerm;
     return ret;
 }
 
-float PDModel::GetRegularizationTerm(const SearchSpace & point){
-    float smoothness = 0;
+void PDModel::ComputeRegularizationTerm(const SearchSpace & point){
+    regularizationTerm = 0;
 
     std::vector<std::pair<float,float>> pairFluxEnergyP(point.fluxP.size()), pairFluxEnergyD(point.fluxD.size());
     for(int i = 0;i<pairFluxEnergyP.size();i++)
@@ -237,12 +250,11 @@ float PDModel::GetRegularizationTerm(const SearchSpace & point){
     std::vector< std::pair<float,float> > secondDerivativeD = getLogDerivative( getLogDerivative( pairFluxEnergyD ));
 
     for(int i = 0;i<secondDerivativeD.size();i++){
-        smoothness += std::abs(secondDerivativeP[i].first);
-        smoothness += std::abs(secondDerivativeD[i].first);
+        regularizationTerm += std::abs(secondDerivativeP[i].first);
+        regularizationTerm += std::abs(secondDerivativeD[i].first);
     }
 
-    return smoothness;
-
+    regularizationTerm *= regularizationFactor;
 }
 
 

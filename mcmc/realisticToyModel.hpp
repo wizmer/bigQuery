@@ -20,13 +20,10 @@
 
 struct RealisticToyModel: public PDModel
 {
-    SearchSpace realValues;
-    SearchSpace initialConditions;
     static const bool isToyMC = true;
 
     RealisticToyModel():
-        PDModel(PDModel::FromCSVS("datasets/B_resolution.csv", "datasets/R_resolution.csv","datasets/mask.csv" )),
-        realValues(), initialConditions()
+       PDModel(PDModel::FromCSVS("datasets/B_resolution.csv", "datasets/R_resolution.csv","datasets/mask.csv" ))
     {
         // Set true values of the model
         for( int i = 0; i < getBetaBinsT().size() - 1; i++){
@@ -38,17 +35,22 @@ struct RealisticToyModel: public PDModel
 
         GenerateToyObservedData(realValues);
     }
+
+    virtual void saveMetaData(std::ofstream & myfile){
+        myfile << "isToyMC "        << isToyMC << std::endl;
+        myfile << "bins " ;
+        for(auto v :  getBetaBinsT()) myfile << v << " "; 
+        myfile << std::endl;
+    }
+
 };
 
 struct RealDataModel: public PDModel
 {
-    SearchSpace realValues;
-    SearchSpace initialConditions;
     static const bool isToyMC = false;
 
     RealDataModel():
-        PDModel(PDModel::FromCSVS("datasets/B_resolution.csv", "datasets/R_resolution.csv", "datasets/mask.csv")),
-        realValues(), initialConditions()
+        PDModel(PDModel::FromCSVS("datasets/B_resolution.csv", "datasets/R_resolution.csv", "datasets/mask.csv"))
     {
         // Get initial conditions
         std::string fname = "datasets/initialConditions.txt";
@@ -81,8 +83,14 @@ struct RealDataModel: public PDModel
         LoadObservedDataFromFile("datasets/observed_data.txt");
     }
 
-
     ~RealDataModel(){}
+
+    virtual void saveMetaData(std::ofstream & myfile){
+        myfile << "isToyMC "        << isToyMC << std::endl;
+        myfile << "bins " ;
+        for(auto v :  getBetaBinsT()) myfile << v << " "; 
+        myfile << std::endl;
+    }
 };
 
 #endif
