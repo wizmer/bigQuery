@@ -12,11 +12,9 @@
 #include <cstring>
 #include <vector>
 
-
-#include "generalUtils.hpp"
+#include "utils/generalUtils.hpp"
 #include "realisticToyModel.hpp"
 #include "ProposalFunction.hpp"
-
 
 
 std::ostream& operator<<(std::ostream& os, const SearchSpace& point)
@@ -45,6 +43,10 @@ public:
     }
 
     float GetLogLikelihood(const SearchSpace & point);
+    void setMask(const std::string & maskFile){
+        model.SetMask( maskFile );
+    }
+                   
 
 
 private:
@@ -196,7 +198,7 @@ private:
         if( chunkStepNumber > 0 ) saveChunk();
     }
 
-
+    
 
 };
 

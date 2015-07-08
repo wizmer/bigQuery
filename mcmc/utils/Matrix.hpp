@@ -96,13 +96,23 @@ public:
                     at(iRow,iColumn) += matrixBase[iMatrix].get(iRow,iColumn) * lambda[iMatrix];
     }
 
-    T applyAndSum(std::function<T(T,int,int)> func, const Matrix<bool> & masked )
+    T applyAndSum(std::function<T(T,int,int)> func )
     {
         T ret = 0;
         for(int iRow = 0; iRow < nRows; iRow++) {
             for(int iColumn = 0; iColumn < nColumns; iColumn++) {
-                if( masked.get(iRow, iColumn) == true ) continue;
                 ret += func(get(iRow,iColumn), iRow, iColumn);
+            }
+        }
+        return ret;
+    }
+
+    T applyAndSum(std::function<T(T)> func )
+    {
+        T ret = 0;
+        for(int iRow = 0; iRow < nRows; iRow++) {
+            for(int iColumn = 0; iColumn < nColumns; iColumn++) {
+                ret += func(get(iRow,iColumn));
             }
         }
         return ret;

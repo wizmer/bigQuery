@@ -1,10 +1,5 @@
 #include "pd_model.hpp"
-#include <sstream>
-#include <cmath>
-#include <chrono>
-#include <ctime>
-
-#include "utils/CSV.hpp"
+#include "CSV.hpp"
 
 // source /afs/cern.ch/sw/lcg/contrib/gcc/4.8/x86_64-slc6/setup.sh
 
@@ -141,6 +136,10 @@ void PDModel::SetBetaResolution(const MatrixF & matrix)
     betaF = matrix.Transpose(); 
 }
 
+void PDModel::SetMask(const std::string & maskFile){
+    SetMask( getMask(maskFile) );
+}
+
 void PDModel::SetMask(const MatrixB & _mask)
 {
     if( _mask.getNrows() != (betaBinsM.size() - 1) || _mask.getNcolums() != (rgdtBinsM.size() - 1) ) 
@@ -171,7 +170,7 @@ MatrixF PDModel::GetPrediction(const SearchSpace & point)
     MatrixF smearP = betaF.Dot(fluxMatrixFP.Dot(rgdtF_transposed));
     MatrixF smearD = betaF.Dot(fluxMatrixFD.Dot(rgdtF_transposed));
 
-    smearP.map([&smearD](float v, int b, int r){return v + smearD.get(b,r);});
+    smearP.map([&smearD,this](float v, int b, int r){return (v + smearD.get(b,r))*(!mask.get(b,r));});
 
     // std::cout << "Time : " << (std::clock() - start) / (float)(CLOCKS_PER_SEC) << " s" << std::endl;
     return smearP;
@@ -213,8 +212,9 @@ float PDModel::GetLogLikelihood(const SearchSpace & point)
     MatrixF prediction = GetPrediction(point);
     float ret = prediction.applyAndSum(
                                        [this](float expected , int n, int m){
+                                           if( std::abs(expected) < 1e-99 ) return 0.;
                                            return observed.get(n,m) * log(expected) - expected;
-                                       }, mask
+                                       }
                                        );
     return ret;
 }
