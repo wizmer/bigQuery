@@ -15,6 +15,8 @@ public:
     Matrix():nRows(0), nColumns(0), data(0) {}
     Matrix(long unsigned int iN, long unsigned int iM): 
         nRows(iN), nColumns(iM),data(nRows*nColumns,0){}
+    Matrix(long unsigned int iN, long unsigned int iM, T val): 
+        nRows(iN), nColumns(iM),data(nRows*nColumns,val){}
 
     inline long unsigned int getNrows()   const { return nRows;    }
     inline long unsigned int getNcolums() const { return nColumns; }

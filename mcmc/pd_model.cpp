@@ -57,8 +57,8 @@ PDModel::PDModel(
                                                                      mask(bM.size()-1,rM.size()-1),
                                                                      regularizationFactor(0)
 {
-    init(_betaF,_rgdtF);
     SetMask(_mask);
+    init(_betaF,_rgdtF);
 }
 
 void PDModel::init(const MatrixF & _betaF, const MatrixF & _rgdtF){
@@ -92,7 +92,7 @@ PDModel PDModel::FromCSVS(const std::string & betaFile, const std::string & rgdt
     MatrixF _betaF = getMatrixAndBins(beta, bT, bM).subMatrix(nTrueBins);
     //    MatrixB _mask = getMask(maskFile).subMatrix(nTrueBins);
 
-    MatrixB _mask(bM.size()-1,rM.size()-1);
+    MatrixB _mask(bM.size()-1,rM.size()-1,true);
     if( maskFile != "" ) _mask = getMask(maskFile);
 
     bT = subBinning(bT, nTrueBins+1);
@@ -171,7 +171,7 @@ MatrixF PDModel::GetPrediction(const SearchSpace & point)
     MatrixF smearP = betaF.Dot(fluxMatrixFP.Dot(rgdtF_transposed));
     MatrixF smearD = betaF.Dot(fluxMatrixFD.Dot(rgdtF_transposed));
 
-    smearP.map([&smearD,this](float v, int b, int r){return (v + smearD.get(b,r))*(!mask.get(b,r));});
+    smearP.map([&smearD,this](float v, int b, int r){return (v + smearD.get(b,r))*mask.get(b,r);});
 
     // std::cout << "Time : " << (std::clock() - start) / (float)(CLOCKS_PER_SEC) << " s" << std::endl;
     return smearP;

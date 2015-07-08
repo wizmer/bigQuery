@@ -33,7 +33,7 @@ bool test_model1()
     MatrixF unitB(betaT.size()-1, betaT.size()-1);
     MatrixF unitR(rgdtT.size()-1, rgdtT.size()-1);
 
-    MatrixB mask(betaT.size()-1, rgdtT.size()-1);
+    MatrixB mask(betaT.size()-1, rgdtT.size()-1,1);
 
     unitB.map([](float, int n, int m){return n==m?1:0;});
     unitR.map([](float, int n, int m){return n==m?1:0;});
@@ -176,7 +176,6 @@ void test_model4(){
     PDModel model = PDModel::FromCSVS("datasets/B_resolution.csv", "datasets/R_resolution.csv","");
     int nVar = model.getBetaBinsT().size()-1;
 
-
     bool pass = true;
     SearchSpace base;
     base.fluxP = std::vector<float>(nVar,0);
@@ -281,7 +280,7 @@ bool test_mask()
     MatrixF unitB(betaT.size()-1, betaT.size()-1);
     MatrixF unitR(rgdtT.size()-1, rgdtT.size()-1);
 
-    MatrixB mask(betaT.size()-1, rgdtT.size()-1);
+    MatrixB mask(betaT.size()-1, rgdtT.size()-1, true);
     
     unitB.map([](float){return 1;});
     unitR.map([](float){return 1;});
@@ -296,10 +295,10 @@ bool test_mask()
 
     for(int i = 0;i<mask.getNrows();i++){
         for(int j = 0;j<mask.getNcolums();j++){
-            mask.set(i,j,1);
+            mask.set(i,j,0);
             model.SetMask(mask);
             MatrixF prediction = model.GetPrediction(base);
-            mask.set(i,j,0);
+            mask.set(i,j,1);
 
             // Check that sum is 90 and masked element is 0
             float val =  prediction.applyAndSum(
