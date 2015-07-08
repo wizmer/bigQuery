@@ -32,22 +32,12 @@ template <class Model, class ProposalFunction >
 class MCMC 
 {
 public:
-    MCMC(std::string name = "mcmc.mcmc");
+    MCMC(std::string name, Model _model);
     virtual ~MCMC(){}
 
     void run(){ loop(); }
     void setSteps(int _nSteps){ nStep = _nSteps; }
     void setVerbose(bool isVerbose){ verbose = isVerbose; }
-    void setRegularizationFactor(float _regularizationFactor){
-        this -> regularizationFactor = _regularizationFactor;
-    }
-
-    float GetLogLikelihood(const SearchSpace & point);
-    void setMask(const std::string & maskFile){
-        model.SetMask( maskFile );
-    }
-                   
-
 
 private:
 
@@ -60,6 +50,8 @@ private:
     ProposalFunction proposalFunction;
 
     unsigned int nVar;
+    unsigned int nThreads;
+    unsigned int chunkSize;
 
     // Raw data 
     std::vector<float> log_likelihood;
@@ -68,13 +60,10 @@ private:
     std::string filename;
 
     float current_log_likelihood;
-    float regularizationFactor;
 
     unsigned int seed;
     unsigned int chunkStepNumber;
-    unsigned int nThreads;
     unsigned int nStep;
-    unsigned int chunkSize;
 
     bool verbose;
 
@@ -159,7 +148,7 @@ private:
 
         saveMetaData();
 
-        current_log_likelihood = GetLogLikelihood(initialConditions);
+        current_log_likelihood = model.GetLogLikelihood(initialConditions);
         
         for( int i = 0; i < nStep; i++)
             {
@@ -167,7 +156,7 @@ private:
 
                 auto proposed_point = proposalFunction.proposePoint(current_point);
 
-                float proposed_log_likelihood = GetLogLikelihood(proposed_point);
+                float proposed_log_likelihood = model.GetLogLikelihood(proposed_point);
 
                 float the_likelihood_ratio = exp(proposed_log_likelihood-current_log_likelihood);
 

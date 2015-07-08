@@ -23,6 +23,8 @@ class PDModel
 
     MatrixB mask;
 
+    float regularizationFactor;
+
     void SetRigidityResolution(const MatrixF & matrix);
     void SetBetaResolution    (const MatrixF & matrix);
 
@@ -60,6 +62,10 @@ public:
 
     // Regularization term
     float GetRegularizationTerm(const SearchSpace & point);
+
+    void setRegularizationFactor(float _regularizationFactor){
+        this -> regularizationFactor = _regularizationFactor;
+    }
 
     // Observed
     void LoadObservedDataFromFile(const std::string & fname);

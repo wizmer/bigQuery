@@ -1,21 +1,21 @@
 #include "mcmc.hpp"
 
-template <class Model, class ProposalFunction > MCMC<Model, ProposalFunction >::MCMC(std::string name):
-    model(),
+template <class Model, class ProposalFunction > MCMC<Model, ProposalFunction >::MCMC(std::string name, Model _model):
+    model(_model),
     realValues(model.realValues),
     current_point(model.initialConditions),
     initialConditions(model.initialConditions),
     proposalFunction(model.initialConditions),
     nVar(initialConditions.size()),
+    nThreads(1),
+    chunkSize(maxRAM / ( (nVar+1)*sizeof(float)) / nThreads),
     log_likelihood(chunkSize),
     trace(nVar),
     filename(name),
     current_log_likelihood(0),
-    regularizationFactor(0),
     seed(0),
     chunkStepNumber(0),
-    nThreads(1), nStep(100),
-    chunkSize(maxRAM / ( (nVar+1)*sizeof(float)) / nThreads),
+    nStep(100),
     verbose(false)
 {
 
@@ -32,17 +32,6 @@ template <class Model, class ProposalFunction > MCMC<Model, ProposalFunction >::
     // construct a trivial random generator engine from a time-based seed:
     seed = std::chrono::system_clock::now().time_since_epoch().count();
     generator.seed(seed);
-}
-
-
-template <class Model, class ProposalFunction > float MCMC<Model, ProposalFunction >::GetLogLikelihood(const SearchSpace & point){
-    float proposed_log_likelihood = model.GetLogLikelihood(point);
-    float antismoothness = model.GetRegularizationTerm(point);
-    // std::cout << "regularizationFactor : " << regularizationFactor << std::endl;
-    // std::cout << proposed_log_likelihood << "\t" << antismoothness*regularizationFactor << std::endl;
-    proposed_log_likelihood -= regularizationFactor * antismoothness;
-    std::cout << "proposed_log_likelihood : " << proposed_log_likelihood << std::endl;
-    return proposed_log_likelihood;
 }
 
 int main(int argc, char** argv){
@@ -79,10 +68,14 @@ int main(int argc, char** argv){
     std::clock_t start = std::clock();
 
     //    MCMC<RealisticToyModel, ProposalFunction > a(name);
-    MCMC<RealDataModel, ProposalFunction > a(name);
-    a.setRegularizationFactor(alphaRegularization);
+
+    
+    RealDataModel model;
+    if(maskFile != "") model.SetMask(maskFile);
+    model.setRegularizationFactor(alphaRegularization);
+
+    MCMC<RealDataModel, ProposalFunction > a(name,model);
     a.setVerbose(verbose);
-    if(maskFile != "") a.setMask(maskFile);
     
     if( nStep > 0 ) a.setSteps(nStep);
     a.run();

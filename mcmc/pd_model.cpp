@@ -54,7 +54,8 @@ PDModel::PDModel(
     rgdtF_transposed(rM.size()-1, rT.size()-1), betaF(bT.size()-1, bM.size()-1),
     deltaP(bT.size()-1, rT.size()-1), deltaD(bT.size()-1, rT.size()-1),
                                                                      observed(bM.size()-1,rM.size()-1), 
-                                                                     mask(bM.size()-1,rM.size()-1)
+                                                                     mask(bM.size()-1,rM.size()-1),
+                                                                     regularizationFactor(0)
 {
     init(_betaF,_rgdtF);
     SetMask(_mask);
@@ -216,6 +217,8 @@ float PDModel::GetLogLikelihood(const SearchSpace & point)
                                            return observed.get(n,m) * log(expected) - expected;
                                        }
                                        );
+
+    ret -= regularizationFactor * GetRegularizationTerm(point);
     return ret;
 }
 
