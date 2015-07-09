@@ -1,11 +1,13 @@
+#ifndef _MODELBASE__HPP_
+#define _MODELBASE__HPP_
 
-template<typename SearchSpace>
+template<typename SearchSpaceType>
 class ModelBase
 {
 protected:
     std::vector<float*> spectatorVariables;
-    SearchSpace realValues;
-    SearchSpace initialConditions;
+    SearchSpaceType realValues;
+    SearchSpaceType initialConditions;
 public:
     ModelBase() : spectatorVariables(),realValues(), initialConditions(){}
 
@@ -15,10 +17,12 @@ public:
 
     virtual ~ModelBase(){}
 
-    virtual float GetLogLikelihood(const SearchSpace & point) = 0;
+    virtual float GetLogLikelihood(const SearchSpaceType & point) = 0;
     virtual void saveMetaData(const std::ofstream & ){}
 
-    const SearchSpace GetRealValues(){ return realValues; }
-    const SearchSpace GetInitialConditions(){ return initialConditions; }
+    const SearchSpaceType GetRealValues(){ return realValues; }
+    const SearchSpaceType GetInitialConditions(){ return initialConditions; }
 };
+
+#endif
 

@@ -1,6 +1,6 @@
 #include "mcmc.hpp"
 
-template <class ProposalFunction > MCMC<ProposalFunction >::MCMC(std::string name, ModelBase & _model):
+template <class ProposalFunction, class SearchSpaceType > MCMC<ProposalFunction, SearchSpaceType>::MCMC(std::string name, ModelBase<SearchSpaceType> & _model):
     model(_model),
     realValues(model.GetRealValues()),
     current_point(model.GetInitialConditions()),
@@ -9,7 +9,7 @@ template <class ProposalFunction > MCMC<ProposalFunction >::MCMC(std::string nam
     nVar(initialConditions.size()),
     nThreads(1),
     chunkSize(maxRAM / ( (nVar+1)*sizeof(float)) / nThreads),
-    spectators(),
+    // spectators(),
     log_likelihood(chunkSize),
     trace(nVar),
     filename(name),
@@ -35,7 +35,7 @@ template <class ProposalFunction > MCMC<ProposalFunction >::MCMC(std::string nam
     generator.seed(seed);
 }
 
-template <class ProposalFunction > void MCMC<ProposalFunction >::loop(){
+template <class ProposalFunction, class SearchSpaceType> void MCMC<ProposalFunction, SearchSpaceType >::loop(){
     std::cout << "nStep : " << nStep/1e6 << " millions" << std::endl;
     std::cout << "chunkSize : " << chunkSize/1e6 << " MBytes" << std::endl;
     std::cout << "maxRAM : " << maxRAM/1e6 << " MBytes" << std::endl;
@@ -85,9 +85,9 @@ template <class ProposalFunction > void MCMC<ProposalFunction >::loop(){
     if( chunkStepNumber > 0 ) saveChunk();
 }
 
-template <class ProposalFunction > void MCMC<ProposalFunction>::setSpectator(std::function<float(const ModelBase&)> f){
-    spectators.push_back(f);
-}
+// template <class ProposalFunction, class SearchSpaceType > void MCMC<ProposalFunction,SearchSpaceType>::setSpectator(std::function<float(const ModelBase<SearchSpaceType>&)> f){
+//     spectators.push_back(f);
+// }
 
 int main(int argc, char** argv){
     int c;
@@ -124,12 +124,13 @@ int main(int argc, char** argv){
 
     //    MCMC<RealisticToyModel, ProposalFunction > a(name);
 
-    
-    RealDataModel model;
+    typedef SearchSpace MySearchSpace;
+
+    RealDataModel<MySearchSpace> model;
     if(maskFile != "") model.SetMask(maskFile);
     model.setRegularizationFactor(alphaRegularization);
 
-    MCMC<ProposalFunction > a(name,model);
+    MCMC<ProposalFunction<MySearchSpace>, MySearchSpace > a(name,model);
     a.setVerbose(verbose);
     //    a.setSpectator( &RealDataModel::regularizationTermAccessor );
 

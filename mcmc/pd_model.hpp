@@ -5,35 +5,14 @@
 #include <iostream>
 
 #include "Matrix.hpp"
+//#include "SearchSpace.hpp"
+#include "ModelBase.hpp"
 #include "SearchSpace.hpp"
 
 std::vector< std::pair<float,float> > getLogDerivative(const std::vector< std::pair<float, float> > & point);
-std::ostream& operator<<(std::ostream& os, const SearchSpace& point);
+// std::ostream& operator<<(std::ostream& os, const SearchSpace& point);
 
-class ModelBase
-{
-protected:
-    std::vector<float*> spectatorVariables;
-    SearchSpace realValues;
-    SearchSpace initialConditions;
-public:
-    ModelBase() : spectatorVariables(),realValues(), initialConditions(){}
-
-    // ModelBase(const ModelBase & original):
-    //     realValues(original.realValues),
-    //     initialConditions(original.initialConditions){}
-
-    virtual ~ModelBase(){}
-
-
-    virtual float GetLogLikelihood(const SearchSpace & point) = 0;
-    virtual void saveMetaData(const std::ofstream & ){}
-
-    const SearchSpace GetRealValues(){ return realValues; }
-    const SearchSpace GetInitialConditions(){ return initialConditions; }
-};
-
-class PDModel: public ModelBase
+template <typename SearchSpaceType> class PDModel: public ModelBase<SearchSpaceType>
 {
     std::vector<MatrixF> matrixBase;
     std::vector<float> betaBinsT, betaBinsM;
@@ -47,6 +26,7 @@ class PDModel: public ModelBase
     float regularizationFactor;
     float regularizationTerm;
 
+
     void SetRigidityResolution(const MatrixF & matrix);
     void SetBetaResolution    (const MatrixF & matrix);
 
@@ -55,8 +35,8 @@ class PDModel: public ModelBase
 
     void init(const MatrixF & _betaF, const MatrixF & _rgdtF);
 public:
-    static const float mp;
-    static const float md;
+    static constexpr float mp = (float)0.9382;
+    static constexpr float md = (float)1.8756;
 
     // Initializations 
     PDModel( const std::vector<float> & bT, const std::vector<float> & bM, 
@@ -75,16 +55,16 @@ public:
     float regularizationTermAccessor(){ return regularizationTerm; }
 
     // Predictions
-    MatrixF GetPrediction(const SearchSpace & point);
+    MatrixF GetPrediction(const SearchSpaceType & point);
     
     // Perform a linear combination of base matrices
-    MatrixF GetPredictionFast(const SearchSpace & point);
+    MatrixF GetPredictionFast(const SearchSpaceType & point);
     
     // Log likelihood
-    virtual float GetLogLikelihood(const SearchSpace & point);
+    virtual float GetLogLikelihood(const SearchSpaceType & point);
     
     // Regularization term
-    void ComputeRegularizationTerm(const SearchSpace & point);
+    void ComputeRegularizationTerm(const SearchSpaceType & point);
 
     
     void setRegularizationFactor(float _regularizationFactor){
@@ -93,7 +73,7 @@ public:
     
     // Observed
     void LoadObservedDataFromFile(const std::string & fname);
-    void GenerateToyObservedData(const SearchSpace & point){
+    void GenerateToyObservedData(const SearchSpaceType & point){
         observed = GetPrediction(point);
     }
 
@@ -101,6 +81,7 @@ public:
     void SetMask(const MatrixB & _mask);
 
 };
+
 
 #endif //PD_MODEL_H
 

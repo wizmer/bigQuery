@@ -18,39 +18,38 @@
 //     return derivative;
 // }
 
-struct RealisticToyModel: public PDModel
+template <typename SearchSpaceType> struct RealisticToyModel: public PDModel<SearchSpaceType>
 {
     static const bool isToyMC = true;
 
     RealisticToyModel():
-       PDModel(PDModel::FromCSVS("datasets/B_resolution.csv", "datasets/R_resolution.csv","datasets/mask.csv" ))
+        PDModel<SearchSpaceType>(PDModel<SearchSpaceType>::FromCSVS("datasets/B_resolution.csv", "datasets/R_resolution.csv","datasets/mask.csv" ))
     {
         // Set true values of the model
-        for( int i = 0; i < getBetaBinsT().size() - 1; i++){
-            realValues.fluxP.push_back(10000);
-            realValues.fluxD.push_back(10000);
+        for( int i = 0; i < PDModel<SearchSpaceType>::getBetaBinsT().size() - 1; i++){
+            this->realValues.fluxP.push_back(10000);
+            this->realValues.fluxD.push_back(10000);
         }
 
         // Generate fake data
 
-        GenerateToyObservedData(realValues);
+        this->GenerateToyObservedData(ModelBase<SearchSpaceType>::realValues);
     }
 
     virtual void saveMetaData(std::ofstream & myfile){
         myfile << "isToyMC "        << isToyMC << std::endl;
         myfile << "bins " ;
-        for(auto v :  getBetaBinsT()) myfile << v << " "; 
+        for(auto v :  this->getBetaBinsT()) myfile << v << " "; 
         myfile << std::endl;
     }
-
 };
 
-struct RealDataModel: public PDModel
+template <typename SearchSpaceType> struct RealDataModel: public PDModel<SearchSpaceType>
 {
     static const bool isToyMC = false;
 
     RealDataModel():
-        PDModel(PDModel::FromCSVS("datasets/B_resolution.csv", "datasets/R_resolution.csv", "datasets/mask.csv"))
+        PDModel<SearchSpaceType>(PDModel<SearchSpaceType>::FromCSVS("datasets/B_resolution.csv", "datasets/R_resolution.csv", "datasets/mask.csv"))
     {
         // Get initial conditions
         std::string fname = "datasets/initialConditions.txt";
@@ -63,11 +62,12 @@ struct RealDataModel: public PDModel
             float fluxP, fluxD;
             f >> fluxP >> fluxD;
             if( f.eof() ) break;
-            initialConditions.fluxP.push_back(fluxP);
-            initialConditions.fluxD.push_back(fluxD);
+            this->initialConditions.fluxP.push_back(fluxP);
+            this->initialConditions.fluxD.push_back(fluxD);
         }
 
-        if( initialConditions.fluxP.size() != getBetaBinsT().size()-1 || initialConditions.fluxD.size() != getBetaBinsT().size()-1 ){
+        if( this->initialConditions.fluxP.size() != this->getBetaBinsT().size()-1 ||
+            this->initialConditions.fluxD.size() != this->getBetaBinsT().size()-1 ){
             std::cerr << "Wrong initialConditions in initialConditions.txt" << std::endl;
             std::cerr << "Size do not match: model.getBetaBinsT().size()-1" << std::endl;
             exit(-1);
@@ -80,7 +80,7 @@ struct RealDataModel: public PDModel
         // }
 
         // Load real data
-        LoadObservedDataFromFile("datasets/observed_data.txt");
+        this->LoadObservedDataFromFile("datasets/observed_data.txt");
     }
 
     ~RealDataModel(){}
@@ -88,9 +88,12 @@ struct RealDataModel: public PDModel
     virtual void saveMetaData(std::ofstream & myfile){
         myfile << "isToyMC "        << isToyMC << std::endl;
         myfile << "bins " ;
-        for(auto v :  getBetaBinsT()) myfile << v << " "; 
+        for(auto v :  this->getBetaBinsT()) myfile << v << " "; 
         myfile << std::endl;
     }
 };
+
+template class RealisticToyModel<SearchSpace>;
+template class RealDataModel<SearchSpace>;
 
 #endif

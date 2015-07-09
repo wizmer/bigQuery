@@ -13,39 +13,40 @@
 #include <vector>
 
 #include "utils/generalUtils.hpp"
+#include "utils/SearchSpace.hpp"
 #include "realisticToyModel.hpp"
 #include "ProposalFunction.hpp"
 
 
-template <class ProposalFunction > 
+template <class ProposalFunction, class SearchSpaceType> 
 class MCMC 
 {
 public:
-    MCMC(std::string name, ModelBase & _model);
+    MCMC(std::string name, ModelBase<SearchSpaceType> & _model);
     virtual ~MCMC(){}
 
     void run(){ loop(); }
     void setSteps(int _nSteps){ nStep = _nSteps; }
     void setVerbose(bool isVerbose){ verbose = isVerbose; }
-    void setSpectator(std::function<float(const ModelBase&)>);
+    //    void setSpectator(std::function<float(const ModelBase&)>);
 
 private:
 
-    ModelBase & model;
-
-    SearchSpace realValues;
-    SearchSpace current_point;
-    SearchSpace initialConditions;
+ModelBase<SearchSpaceType> & model;
+    
+SearchSpaceType realValues;
+    SearchSpaceType current_point;
+    SearchSpaceType initialConditions;
 
     ProposalFunction proposalFunction;
 
     unsigned int nVar;
     unsigned int nThreads;
-    unsigned int chunkSize;
+unsigned int chunkSize;
 
-    // Raw data 
-    std::vector<std::function<float(const ModelBase&)>> spectators;
-    std::vector<float> log_likelihood;
+// Raw data 
+// std::vector<std::function<float(const ModelBase<SearchSpaceBase>&)>> spectators;
+std::vector<float> log_likelihood;
     std::vector< std::vector<float> > trace;
 
     std::string filename;
@@ -68,10 +69,10 @@ private:
         myfile << "nVar "           << nVar          << std::endl;
         myfile << "chunkSize "      << chunkSize     << std::endl;
         myfile << "seed "           << seed          << std::endl;
-        myfile << "initialPoint"    << std::endl;
-        myfile << initialConditions << std::endl;
-        myfile << "realValues"      << std::endl;
-        myfile << realValues        << std::endl;
+        // myfile << "initialPoint"    << std::endl;
+        // myfile << initialConditions << std::endl;
+        // myfile << "realValues"      << std::endl;
+        // myfile << realValues        << std::endl;
       
         model.saveMetaData(myfile);
 
@@ -106,7 +107,7 @@ private:
         chunkNumber++;
     }
 
-    void updateStep(const SearchSpace &proposed_point, const float &proposed_log_likelihood)
+    void updateStep(const SearchSpaceType &proposed_point, const float &proposed_log_likelihood)
     {
         if(verbose) std::cout << "accepted" << std::endl;
 
@@ -129,3 +130,4 @@ private:
 };
 
 #endif
+

@@ -3,23 +3,9 @@
 
 // source /afs/cern.ch/sw/lcg/contrib/gcc/4.8/x86_64-slc6/setup.sh
 
-// Kinematics
-const float PDModel::mp = (float)0.9382;
-const float PDModel::md = (float)1.8756;
+
 float R_from_beta(float beta, float m){ return m*beta/(float)sqrt(1-beta*beta); }
 float beta_from_R(float R, float m){ return R/(float)sqrt(R*R+m*m); }
-
-std::ostream& operator<<(std::ostream& os, const SearchSpace& point)
-{
-    os << "fluxP ";
-    for(auto v : point.fluxP) os << v << " ";
-    os << "\n";
-    os << "fluxD ";
-    for(auto v : point.fluxD) os << v << " ";
-    return os;
-}
-
-
 
 std::vector< std::pair<float,float> > getLogDerivative(const std::vector< std::pair<float, float> > & point){
     int nVar = point.size();
@@ -31,7 +17,6 @@ std::vector< std::pair<float,float> > getLogDerivative(const std::vector< std::p
     }
     return derivative;
 }
-
 
 std::vector<float> subBinning(const std::vector<float> &bT, int nBins, int firstBin = 0){
     if( nBins <= 1) return std::vector<float>(bT);
@@ -56,7 +41,7 @@ float getOverlap(float a0,float a1,float b0,float b1){
 }
 
 
-PDModel::PDModel( 
+template <typename SearchSpaceType> PDModel<SearchSpaceType>::PDModel( 
                  const std::vector<float> & bT, const std::vector<float> & bM,  
                  const std::vector<float> & rT, const std::vector<float> & rM,
                  const MatrixF & _betaF, const MatrixF & _rgdtF, const MatrixB & _mask):
@@ -74,7 +59,7 @@ PDModel::PDModel(
     init(_betaF,_rgdtF);
 }
 
-void PDModel::init(const MatrixF & _betaF, const MatrixF & _rgdtF){
+template <typename SearchSpaceType> void PDModel<SearchSpaceType>::init(const MatrixF & _betaF, const MatrixF & _rgdtF){
     for(int bBin=0; bBin < betaBinsT.size() - 1; bBin++)
         {
             for(int rBin=0; rBin < rgdtBinsT.size() - 1; rBin++)
@@ -96,7 +81,7 @@ void PDModel::init(const MatrixF & _betaF, const MatrixF & _rgdtF){
     constructBaseMatrices();
 }
 
-PDModel PDModel::FromCSVS(const std::string & betaFile, const std::string & rgdtFile, const std::string & maskFile, int nTrueBins )
+template <typename SearchSpaceType> PDModel<SearchSpaceType> PDModel<SearchSpaceType>::FromCSVS(const std::string & betaFile, const std::string & rgdtFile, const std::string & maskFile, int nTrueBins )
 {
     std::fstream beta(betaFile), rgdt(rgdtFile);
     std::vector<float> rT, rM, bT, bM;
@@ -111,12 +96,12 @@ PDModel PDModel::FromCSVS(const std::string & betaFile, const std::string & rgdt
     bT = subBinning(bT, nTrueBins+1);
     rT = subBinning(rT, nTrueBins+1);
 
-    PDModel model(bT,bM,rT,rM,_betaF,_rgdtF,_mask);
+    PDModel<SearchSpaceType> model(bT,bM,rT,rM,_betaF,_rgdtF,_mask);
 
     return model;
 }
 
-void PDModel::SetRigidityResolution(const MatrixF & matrix)
+template <typename SearchSpaceType> void PDModel<SearchSpaceType>::SetRigidityResolution(const MatrixF & matrix)
 { 
     if( matrix.getNrows() != (rgdtBinsT.size() - 1) ) 
         {
@@ -134,7 +119,7 @@ void PDModel::SetRigidityResolution(const MatrixF & matrix)
 }
 
 
-void PDModel::SetBetaResolution(const MatrixF & matrix)
+template <typename SearchSpaceType> void PDModel<SearchSpaceType>::SetBetaResolution(const MatrixF & matrix)
 {
     if( matrix.getNrows() != (betaBinsT.size() - 1) ) 
         {
@@ -150,11 +135,11 @@ void PDModel::SetBetaResolution(const MatrixF & matrix)
     betaF = matrix.Transpose(); 
 }
 
-void PDModel::SetMask(const std::string & maskFile){
+template <typename SearchSpaceType> void PDModel<SearchSpaceType>::SetMask(const std::string & maskFile){
     SetMask( getMask(maskFile) );
 }
 
-void PDModel::SetMask(const MatrixB & _mask)
+template <typename SearchSpaceType> void PDModel<SearchSpaceType>::SetMask(const MatrixB & _mask)
 {
     if( _mask.getNrows() != (betaBinsM.size() - 1) || _mask.getNcolums() != (rgdtBinsM.size() - 1) ) 
         {
@@ -170,7 +155,7 @@ void PDModel::SetMask(const MatrixB & _mask)
     mask = _mask;
 }
 
-MatrixF PDModel::GetPrediction(const SearchSpace & point)
+template <typename SearchSpaceType> MatrixF PDModel<SearchSpaceType>::GetPrediction(const SearchSpaceType & point)
 {
     // std::clock_t start = std::clock();
     MatrixF fluxMatrixFP(deltaP), fluxMatrixFD(deltaD);
@@ -189,7 +174,7 @@ MatrixF PDModel::GetPrediction(const SearchSpace & point)
     return smearP;
 }
 
-MatrixF PDModel::GetPredictionFast(const SearchSpace & point)
+template <typename SearchSpaceType> MatrixF PDModel<SearchSpaceType>::GetPredictionFast(const SearchSpaceType & point)
 {
     // std::clock_t start = std::clock();
     MatrixF output(betaBinsM.size()-1,rgdtBinsM.size()-1);
@@ -202,9 +187,9 @@ MatrixF PDModel::GetPredictionFast(const SearchSpace & point)
     return output;
 }
 
-void PDModel::constructBaseMatrices(){
+template <typename SearchSpaceType> void PDModel<SearchSpaceType>::constructBaseMatrices(){
     long unsigned int nVar = rgdtBinsT.size()-1;
-    SearchSpace base;
+    SearchSpaceType base;
     base.fluxP = std::vector<float>(nVar,0);
     base.fluxD = std::vector<float>(nVar,0);
 
@@ -220,7 +205,7 @@ void PDModel::constructBaseMatrices(){
 }
 
 
-float PDModel::GetLogLikelihood(const SearchSpace & point)
+template <typename SearchSpaceType> float PDModel<SearchSpaceType>::GetLogLikelihood(const SearchSpaceType & point)
 {
     MatrixF prediction = GetPrediction(point);
     float ret = prediction.applyAndSum(
@@ -235,7 +220,7 @@ float PDModel::GetLogLikelihood(const SearchSpace & point)
     return ret;
 }
 
-void PDModel::ComputeRegularizationTerm(const SearchSpace & point){
+template <typename SearchSpaceType> void PDModel<SearchSpaceType>::ComputeRegularizationTerm(const SearchSpaceType & point){
     regularizationTerm = 0;
 
     std::vector<std::pair<float,float>> pairFluxEnergyP(point.fluxP.size()), pairFluxEnergyD(point.fluxD.size());
@@ -258,7 +243,7 @@ void PDModel::ComputeRegularizationTerm(const SearchSpace & point){
 }
 
 
-void PDModel::LoadObservedDataFromFile(const std::string & fname)
+template <typename SearchSpaceType> void PDModel<SearchSpaceType>::LoadObservedDataFromFile(const std::string & fname)
 {
     std::fstream fs(fname);
     std::vector<std::vector<float> > data;
@@ -279,3 +264,7 @@ void PDModel::LoadObservedDataFromFile(const std::string & fname)
     obs.Fill(data);
     observed = obs;
 }
+
+template class PDModel<SearchSpace>;
+
+

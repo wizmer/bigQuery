@@ -7,10 +7,10 @@
 std::default_random_engine generator;
 std::normal_distribution<float> normalDistrib; // a random gaussian generator
 
-class ProposalFunction {
+template <typename SearchSpaceType> class ProposalFunction{
     std::vector<float> sigmaP, sigmaD;
 public: 
-    ProposalFunction(const SearchSpace & initialPoint):
+    ProposalFunction(const SearchSpaceType & initialPoint):
         sigmaP(), sigmaD()
     {
         for(auto v : initialPoint.fluxP){
@@ -23,9 +23,9 @@ public:
         }
     }
 
-    SearchSpace proposePoint(const SearchSpace &previous_point)
+    SearchSpaceType proposePoint(const SearchSpaceType &previous_point)
     {
-        SearchSpace ret = previous_point;
+        SearchSpaceType ret = previous_point;
         for(int i = 0; i < sigmaP.size(); i++) {
             do { ret.fluxP[i] = previous_point.fluxP[i] + sigmaP[i] * normalDistrib(generator); } 
             while( ret.fluxP[i] < 0);
