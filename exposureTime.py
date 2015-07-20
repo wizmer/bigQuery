@@ -17,6 +17,8 @@ theCommand="""bq """ + globalOptions + """ query """ + queryOption + """'
         SUM(Lifetime) AS Lifetime,
         FLOOR(IGRF40pos) + 1 AS cut
       FROM """ + theTable + """
+      WHERE
+        Lifetime > 0.5
       GROUP BY
         ROLLUP (cut)
       ORDER BY
