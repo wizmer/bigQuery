@@ -34,7 +34,7 @@ private:
 
 ModelBase<SearchSpaceType> & model;
     
-SearchSpaceType realValues;
+    SearchSpaceType realValues;
     SearchSpaceType current_point;
     SearchSpaceType initialConditions;
 
