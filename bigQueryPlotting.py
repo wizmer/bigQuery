@@ -76,9 +76,7 @@ def binCenter(nBins, firstBin, lastBin, var):
     iBin=binIndex(nBins, firstBin, lastBin, var)
     return "({}+({}+0.5)*{})".format(firstBin,iBin,binWidth)
     
-def histCustomCommand( nBins, firstBin, lastBin, theCommand):
-    binWidth=float(lastBin-firstBin)/nBins
-
+def histCustomCommand( theCommand):
     try:
         data = executeQuery(theCommand)
 
@@ -297,17 +295,18 @@ def singleton(cls):
         pass
         return cls
 
-@singleton
+# @singleton
 class SelStatusDescriptor:
-    data=executeQuery("bq --format json show " + bigQueryTable)
-    for d in data['schema']['fields']:
-        if d['name'] == 'selStatus':
-            selStatusName=d['description']
+    def __init__(self):
+        data=executeQuery("bq --format json show " + bigQueryTable)
+        for d in data['schema']['fields']:
+            if d['name'] == 'selStatus':
+                selStatusName=d['description']
 
-    selStatusName=selStatusName.split(',')
-    bitIndex=dict()
-    for i in range(len(selStatusName)):
-        bitIndex[selStatusName[i]]=i
+        selStatusName=selStatusName.split(',')
+        bitIndex=dict()
+        for i in range(len(selStatusName)):
+            bitIndex[selStatusName[i]]=i
 
 def makeSelectionMask(cutList):
     selStatusDescriptor=SelStatusDescriptor()
