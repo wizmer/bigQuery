@@ -13,7 +13,7 @@ from matplotlib import cm
 from matplotlib.pylab import *
 from scipy.optimize import curve_fit
 
-bigQueryTable="full_test.full_test"
+bigQueryTable="AMS.Data"
 
 def executeQuery(theCommand):
     #os.system(theCommand)
@@ -304,9 +304,9 @@ class SelStatusDescriptor:
                 selStatusName=d['description']
 
         selStatusName=selStatusName.split(',')
-        bitIndex=dict()
+        self.bitIndex=dict()
         for i in range(len(selStatusName)):
-            bitIndex[selStatusName[i]]=i
+            self.bitIndex[selStatusName[i]]=i
 
 def makeSelectionMask(cutList):
     selStatusDescriptor=SelStatusDescriptor()

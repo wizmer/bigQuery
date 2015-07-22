@@ -14,7 +14,7 @@ masks.append("downGoing")
 masks.append("betaNotCrazy")
 
 
-theTable="full_test.full_test"
+theTable="AMS.Data"
 b.setTable(theTable)
 
 theMask=b.makeSelectionMask(masks)
@@ -25,23 +25,23 @@ mass = "(Rfull * sqrt(1 - pow(BetaTOF,2)) / BetaTOF)"
 
 nBins=20
 firstBin=0
-lastBin=100
+lastBin=10
 
 queryOption=str()
 globalOptions=str()
 
 #whereClause="(Rfull > 0 && (selStatus&" + str(theMask)+ ")==" + str(theMask)+ " && " + mass + " > 0.8 && " + mass + " < 1.3 )"
 whereClause="(Rfull > 0 && (selStatus&" + str(theMask)+ ")==" + str(theMask)+ " )"
-havingClause="( binX < " + str(nBins) + ")"
+havingClause="( binX < " + str(lastBin) + ")"
 
 isPhysicsTrigger=" (PhysBPatt >> 1)&"+str(int('11111',2))+ " != 0 as isPhysicsTrigger "
 isTof="(JMembPatt>>4)&1 as isTof"
 isEcal="(JMembPatt>>11)&1 as isEcal"
 
-variables='{} as binX, {},{},{},COUNT(1)'.format(b.bin(nBins,firstBin,lastBin,'Rfull'),isPhysicsTrigger,isTof,isEcal)
+variables='{} as binX, {},{},{},COUNT(1)'.format(b.binCenter(nBins,firstBin,lastBin,'Rfull'),isPhysicsTrigger,isTof,isEcal)
 
 # queryOption=" --require_cache "
-# globalOptions=' --format json '
+globalOptions=' --format json '
 
 theCommand="""bq """ + globalOptions + """ query -n 10000 """ + queryOption + """'
 SELECT binX, IF(nTofNoEcal + nEcalAll > 0,nPhysics*100/(nPhysics + nEcalNoTof*1000 + nTofAll*100),100), nTofAll, nEcalNoTof, IF(nTofNoEcal + nEcalAll > 0,nPhysics*100/(nPhysics + nEcalAll*1000 + nTofNoEcal*100),100), nPhysics, nEcalAll, nTofNoEcal FROM (
@@ -60,12 +60,12 @@ SELECT binX, IF(nTofNoEcal + nEcalAll > 0,nPhysics*100/(nPhysics + nEcalNoTof*10
 
 #print(b.executeQuery(theCommand))
 
-data=b.histCustomCommand( nBins, firstBin, lastBin, theCommand)
+data=b.histCustomCommand( theCommand)
 
-print 'binX,nPhysics,nTofAll,nEcalNoTof'
-for d in data:
-    print '{},{},{},{}'.format(d['binX'], d['nPhysics'], d['nTofAll'], d['nEcalNoTof'])
-
+# print 'binX,nPhysics,nTofAll,nEcalNoTof'
+# for d in data:
+#     print '{},{},{},{}'.format(d['binX'], d['nPhysics'], d['nTofAll'], d['nEcalNoTof'])
+data.plot(y="f0_")
 plt.show()
     
                                         

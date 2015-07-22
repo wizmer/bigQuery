@@ -2,10 +2,10 @@ import bigQueryPlotting as b
 import matplotlib.pyplot as plt
 
 theTable="AMS.cutoffs"
+queryOption=str()
+globalOptions=str()
 
 queryOption=" --format json "
-#queryOption=str()
-globalOptions=str()
 
 theCommand="""bq """ + globalOptions + """ query """ + queryOption + """'
     SELECT
@@ -17,9 +17,10 @@ theCommand="""bq """ + globalOptions + """ query """ + queryOption + """'
         SUM(Lifetime) AS Lifetime,
         FLOOR(IGRF40pos) + 1 AS cut
       FROM """ + theTable + """
+      JOIN AMS.timeInSecInData
+      ON (AMS.timeInSecInData.JMDCTimeInSec = """ + theTable + """.JMDCTime)
       WHERE (
-        Lifetime > 0.5 &&
-        ABS(ThetaM) > 0.5
+         goodSecond == 1
       )
       GROUP BY
         ROLLUP (cut)
@@ -29,10 +30,6 @@ theCommand="""bq """ + globalOptions + """ query """ + queryOption + """'
       cut > 0
 '"""
 
-
-
-
-#data=b.histCustomCommand( nBins, firstBin, lastBin, theCommand)
 df=b.histCustomCommand(theCommand)
 h=b.Hist( df, 1, 0, 50 )
 h.plot()

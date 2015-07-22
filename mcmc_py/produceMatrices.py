@@ -7,20 +7,14 @@ from histQueryFactory import *
 import matplotlib.pyplot as plt
 import numpy as np
 
+selectionStatus ="1972401"
+#selectionStatus="2097137"
+#selectionStatus=2097151
+
 s.set(rc={'image.cmap': "jet"})
 #matplotlib.figsize(12,10)
 # rcParams['figure.facecolor'] = (1,1,1,1)
 # rcParams['savefig.facecolor'] = (1,1,1,1)
-
-def plot_matrix(frame, **args):
-    from matplotlib.colors import LogNorm
-    x,y = np.meshgrid(np.array(frame.index,   dtype=float),
-                      np.array(frame.columns, dtype=float))
-    z = frame.T.values.astype(float)
-    ret = gca().pcolor(y,x,z, **args)
-    (lambda x: xlim(x[0],x[-1]))(frame.columns)
-    (lambda x: ylim(x[0],x[-1]))(frame.index  )
-    return ret
 
 ################################################################################
 ##
@@ -131,7 +125,7 @@ h = "SELECT\n" + vs + """
 FROM
    AMS.protonsB1034
 WHERE
-   selStatus&2097151=2097151
+   selStatus&""" + selectionStatus + """=""" + selectionStatus + """
 GROUP BY B_bin,Gen_bin
 ORDER BY B_bin,Gen_bin"""
 
@@ -146,12 +140,12 @@ frame = frame.set_index(list(frame.columns[:-1])).unstack()['Count'].fillna(0)
 frame.T.to_csv("./datasets/B_resolution.csv")
 
 #plt.figsize(5,4)
-cc = plot_matrix(frame.ix[frame.index[:-1]][frame.columns[:-1]],
-                            norm=LogNorm(vmin=1,vmax=10**6))
-colorbar(cc)
-xlabel("$\\beta$ True")
-ylabel("$\\beta$ Measured")
-ylim(0.6,1.4)
+# cc = plot_matrix(frame.ix[frame.index[:-1]][frame.columns[:-1]],
+#                             norm=LogNorm(vmin=1,vmax=10**6))
+# colorbar(cc)
+# xlabel("$\\beta$ True")
+# ylabel("$\\beta$ Measured")
+# ylim(0.6,1.4)
 
 ################################################################################
 ##
@@ -166,7 +160,7 @@ h = "SELECT\n" + vs + """
 FROM
    AMS.protonsB1034
 WHERE
-   selStatus&2097151=2097151
+   selStatus&""" + selectionStatus + """=""" + selectionStatus + """
 GROUP BY R_bin,Gen_bin
 ORDER BY R_bin,Gen_bin"""
 
@@ -178,12 +172,12 @@ frame['GenBin'] = frame['GenBin'].map(lambda x: rgdtTheoretic[x] )
 frame = frame.set_index(list(frame.columns[:-1])).unstack()['Count'].fillna(0)
 frame.T.to_csv("./datasets/R_resolution.csv")
 #plt.figsize(5,4)
-cc = plot_matrix(frame.ix[frame.index[:-1]][frame.columns[:-1]],
-                            norm=LogNorm(vmin=1,vmax=10**6))
-colorbar(cc)
-xlabel("$R$ True")
-ylabel("$R$ Measured")
-xlim(0.5,10)
+# cc = plot_matrix(frame.ix[frame.index[:-1]][frame.columns[:-1]],
+#                             norm=LogNorm(vmin=1,vmax=10**6))
+# colorbar(cc)
+# xlabel("$R$ True")
+# ylabel("$R$ Measured")
+# xlim(0.5,10)
 
 ################################################################################
 ##
@@ -199,7 +193,7 @@ h = "SELECT\n" + vs + """
 FROM
    AMS.Data
 WHERE
-   selStatus&2097151=2097151 AND
+   selStatus&""" + selectionStatus + """=""" + selectionStatus + """ AND
    Livetime > 0.5 AND
    ABS(Latitude) > 1.0
 GROUP BY R_bin,B_bin
@@ -214,12 +208,12 @@ frame = frame.set_index(list(frame.columns[:-1])).unstack()['Count'].fillna(0)
 frame = frame.T
 
 #plt.figsize(13,6)
-cc = plot_matrix(frame.ix[frame.index[:-1]][frame.columns[:-1]],
-                            norm=LogNorm(vmin=1,vmax=10**6))
-colorbar(cc)
-xlabel("$R$ Measured")
-ylabel("$\\beta$ Measured")
-xlim(0.5,5)
-ylim(0.5,1.3)
+# cc = plot_matrix(frame.ix[frame.index[:-1]][frame.columns[:-1]],
+#                             norm=LogNorm(vmin=1,vmax=10**6))
+# colorbar(cc)
+# xlabel("$R$ Measured")
+# ylabel("$\\beta$ Measured")
+# xlim(0.5,5)
+# ylim(0.5,1.3)
 
-np.savetxt("datasets/observed_data.txt",frame.values)
+np.savetxt("datasets/observed_data_selStatus"+selectionStatus+".txt",frame.values)
