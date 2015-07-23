@@ -75,6 +75,18 @@ def binCenter(nBins, firstBin, lastBin, var):
     binWidth=float(lastBin-firstBin)/nBins
     iBin=binIndex(nBins, firstBin, lastBin, var)
     return "({}+({}+0.5)*{})".format(firstBin,iBin,binWidth)
+
+def binLowEdge(nBins, firstBin, lastBin, var):
+    # find in which bin is var
+    binWidth=float(lastBin-firstBin)/nBins
+    iBin=binIndex(nBins, firstBin, lastBin, var)
+    return "({}+({})*{})".format(firstBin,iBin,binWidth)
+
+def binHighEdge(nBins, firstBin, lastBin, var):
+    # find in which bin is var
+    binWidth=float(lastBin-firstBin)/nBins
+    iBin=binIndex(nBins, firstBin, lastBin, var)
+    return "({}+({})*{}+1)".format(firstBin,iBin,binWidth)
     
 def histCustomCommand( theCommand):
     try:
@@ -199,20 +211,20 @@ def hist( nBins, firstBin, lastBin, var, cut='', queryOption='', requery=False )
             return histo
         
     binWidth=float(lastBin-firstBin)/nBins
-    theCommand="bq --format json query " + queryOption + " -n " + str(nBins+10) + " \'SELECT " + binCenter(nBins,firstBin,lastBin,var) + " as binX,COUNT(1) FROM " + bigQueryTable
+    theCommand="bq --format json query " + queryOption + " -n " + str(nBins+10) + " \"SELECT " + binCenter(nBins,firstBin,lastBin,var) + " as binX,COUNT(1) FROM " + bigQueryTable
     if cut :
         theCommand+=" WHERE (" + cut + ") "
 
     theCommand+=" GROUP BY binX"
     theCommand+=" HAVING binX >= " + str(firstBin) + " AND binX < (" + str(lastBin)+ " )"
-    theCommand+=" ORDER BY binX\'"
+    theCommand+=" ORDER BY binX\""
 
     # h = histQueryFactory.HistQueryFactory()
     # h.add_variable(var,nBins,firstBin,lastBin)
     # h.add_condition(cut)
     #theSelectClause=str(h)
     #theCommand="bq --format json query " + queryOption + " -n " + str(nBins+10) + " \'" + theSelectClause + " \'" 
-    df=histCustomCommand( nBins, firstBin, lastBin, theCommand )
+    df=histCustomCommand( theCommand )
     saveHist(df,dirName,cacheName)
     return Hist( df, nBins, firstBin, lastBin )
     
@@ -229,13 +241,13 @@ def hist2d( nBinsX, firstBinX, lastBinX, nBinsY, firstBinY, lastBinY, varX, varY
     binWidthX=float(lastBinX-firstBinX)/nBinsX
     binWidthY=float(lastBinY-firstBinY)/nBinsY
 
-    theCommand="bq --format json query -n " + str(nBinsX*nBinsY+10) + " \'SELECT " + binIndex(nBinsX,firstBinX,lastBinX,varX) + " as binX, " + binIndex(nBinsY,firstBinY,lastBinY,varY) + " as binY,COUNT(1) FROM " + bigQueryTable
+    theCommand="bq --format json query -n " + str(nBinsX*nBinsY+10) + " \"SELECT " + binIndex(nBinsX,firstBinX,lastBinX,varX) + " as binX, " + binIndex(nBinsY,firstBinY,lastBinY,varY) + " as binY,COUNT(1) FROM " + bigQueryTable
     if cut :
         theCommand+=" WHERE (" + cut + ")"
 
     theCommand+=" GROUP BY binX, binY"
     theCommand+=" HAVING binX >= 0 AND binX < (" + str(nBinsX) + ") AND binY >= 0 AND binY < (" + str(nBinsY) + ")"
-    theCommand+=" ORDER BY binX,binY \'"
+    theCommand+=" ORDER BY binX,binY \""
 
     data = executeQuery(theCommand)
     df=pd.read_json(json.dumps(data))
