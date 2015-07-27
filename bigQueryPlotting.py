@@ -65,6 +65,28 @@ def executeQuery(theCommand):
 #     print table
 #     return table
 
+def binCenterFromArray(var,array,aliasName='binX'):
+    res='CASE\n'
+    for i in range(len(array)-1):
+        res+='    WHEN {} >= {} AND {} < {} THEN {}\n'.format(var, array[i],var,array[i+1],math.sqrt(array[i]*array[i+1]))
+
+    res+='ELSE NULL END '
+    return res
+
+def binLowEdgeFromArray(var, array,aliasName='binX'):
+    res='CASE\n'
+    for i in range(len(array)-1):
+        res+='    WHEN {} >= {} AND {} < {} THEN {}\n'.format(var, array[i],var,array[i+1],array[i])
+    res+='ELSE NULL END '
+    return res
+
+def binHighEdgeFromArray(var, array,aliasName='binX'):
+    res='CASE\n'
+    for i in range(len(array)-1):
+        res+='    WHEN {} >= {} AND {} < {} THEN {}\n'.format(var, array[i],var,array[i+1],array[i+1])
+    res+='ELSE NULL END '
+    return res
+
 def binIndex(nBins, firstBin, lastBin, var):
     # find in which bin is var
     binWidth=float(lastBin-firstBin)/nBins
@@ -98,12 +120,14 @@ def histCustomCommand( theCommand, requery=False):
     try:
         data = executeQuery(theCommand)
         df=pd.read_json(json.dumps(data))
+        if not df.empty: 
+            print 'saving'
+            saveHistDataFrame(df,dirName,theCommand)
 
     except ValueError:
         print 'no json data'
         return None
-
-    saveHistDataFrame(df,dirName,theCommand)
+    
     return df
 
 
