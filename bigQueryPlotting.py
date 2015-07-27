@@ -88,15 +88,25 @@ def binHighEdge(nBins, firstBin, lastBin, var):
     iBin=binIndex(nBins, firstBin, lastBin, var)
     return "({}+({})*{}+1)".format(firstBin,iBin,binWidth)
     
-def histCustomCommand( theCommand):
+def histCustomCommand( theCommand, requery=False):
+    dirName=os.environ.get('HOME')+'/.bigQueryCached/'
+    if requery is False:
+        cachedResult=getHistDataFrame(dirName,theCommand)
+        if cachedResult is not None:
+            return cachedResult
+
     try:
         data = executeQuery(theCommand)
-
         df=pd.read_json(json.dumps(data))
-        return df
 
     except ValueError:
         print 'no json data'
+        return None
+
+    saveHistDataFrame(df,dirName,theCommand)
+    return df
+
+
 
 def hist2DCustomCommand( nBinsX, firstBinX, lastBinX, nBinsY, firstBinY, lastBinY, theCommand):
     binWidth=float(lastBin-firstBin)/nBins
@@ -197,19 +207,7 @@ class Hist:
             plt.yticks(np.arange(self.firstBinY,self.lastBinY,float(self.lastBinY-self.firstBinY)/5)) 
             return self
 
-            
-
-    
 def hist( nBins, firstBin, lastBin, var, cut='', queryOption='', requery=False ):
-    cacheName='hist1D_nBins={}_firstBin={}_lastBin={}_var={}_cut={}.pkl'.format(nBins,firstBin,lastBin,var,cut)
-    dirName=os.environ.get('HOME')+'/.bigQueryCached/'
-
-    if requery is False:
-        cachedResult=getHist(dirName,cacheName)
-        if cachedResult is not None:
-            histo=Hist(cachedResult, nBins, firstBin, lastBin)
-            return histo
-        
     binWidth=float(lastBin-firstBin)/nBins
     theCommand="bq --format json query " + queryOption + " -n " + str(nBins+10) + " \"SELECT " + binCenter(nBins,firstBin,lastBin,var) + " as binX,COUNT(1) FROM " + bigQueryTable
     if cut :
@@ -219,24 +217,13 @@ def hist( nBins, firstBin, lastBin, var, cut='', queryOption='', requery=False )
     theCommand+=" HAVING binX >= " + str(firstBin) + " AND binX < (" + str(lastBin)+ " )"
     theCommand+=" ORDER BY binX\""
 
-    # h = histQueryFactory.HistQueryFactory()
-    # h.add_variable(var,nBins,firstBin,lastBin)
-    # h.add_condition(cut)
-    #theSelectClause=str(h)
-    #theCommand="bq --format json query " + queryOption + " -n " + str(nBins+10) + " \'" + theSelectClause + " \'" 
-    df=histCustomCommand( theCommand )
-    saveHist(df,dirName,cacheName)
+    df=histCustomCommand( theCommand, cacheName=cacheName )
     return Hist( df, nBins, firstBin, lastBin )
     
 
 def hist2d( nBinsX, firstBinX, lastBinX, nBinsY, firstBinY, lastBinY, varX, varY, cut='', requery=False ):
     cacheName='hist2D_nBinsX={}_firstBinX={}_lastBinX={}_varX={}_nBinsY={}_firstBinY={}_lastBinY={}_varY={}_cut={}.pkl'.format(nBinsX,firstBinX,lastBinX,varX,nBinsY,firstBinY,lastBinY,varY,cut)
-    dirName=os.environ.get('HOME')+'/.bigQueryCached/'
 
-    cachedResult=getHist(dirName,cacheName)
-    if requery is False and cachedResult is not None:
-        histo=Hist(cachedResult,nBinsX, firstBinX, lastBinX, nBinsY, firstBinY, lastBinY)
-        return histo
 
     binWidthX=float(lastBinX-firstBinX)/nBinsX
     binWidthY=float(lastBinY-firstBinY)/nBinsY
@@ -251,7 +238,7 @@ def hist2d( nBinsX, firstBinX, lastBinX, nBinsY, firstBinY, lastBinY, varX, varY
 
     data = executeQuery(theCommand)
     df=pd.read_json(json.dumps(data))
-    saveHist(df,dirName,cacheName)
+    saveHistDataFrame(df,dirName,cacheName)
 
     
     histo=Hist(df,nBinsX, firstBinX, lastBinX, nBinsY, firstBinY, lastBinY)
@@ -339,11 +326,18 @@ def makeSelectionMask(cutList):
 
     return ' ((selStatus^' + str(statusMask) + ')&' + str(selMask) + ')==0 '
 
-def saveHist(data,dirname,filename):
-    f=open(dirname+'/'+str(filename.__hash__()),'wb')
-    return pkl.dump(data,f)
+def saveHistDataFrame(data,dirname,filename):
+    try:
+        f=open(dirname+'/'+str(filename.__hash__()),'wb')
+        return pkl.dump(data,f)
+    except IOError:
+        try:
+            os.mkdir(dirname)
+        except:
+            pass
+    return None
 
-def getHist(dirname,filename):
+def getHistDataFrame(dirname,filename):
     print 'loading : ' + filename
     try:
         f=open(dirname+'/'+str(filename.__hash__()))
