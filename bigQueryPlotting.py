@@ -2,15 +2,12 @@
 import subprocess
 import os
 import numpy as np
-import matplotlib.pyplot as plt
 import subprocess
 import json
 import bq
 import pickle as pkl
 import histQueryFactory
 import pandas as pd
-from matplotlib import cm
-from matplotlib.pylab import *
 from scipy.optimize import curve_fit
 
 bigQueryTable="AMS.Data"
@@ -20,7 +17,7 @@ def executeQuery(theCommand):
     print theCommand
     try:
 
-        rawOutput = subprocess.check_output(theCommand, stderr=subprocess.STDOUT,shell=True)
+        rawOutput = subprocess.check_output(theCommand,shell=True)
 
         f = open('log','w')
         f.write(rawOutput)
@@ -31,7 +28,6 @@ def executeQuery(theCommand):
             output=rawOutput.split('\n')[1]
 
         jsonData=json.loads(output)
-        print rawOutput[:1000]
         return jsonData
 
     except subprocess.CalledProcessError as exc:
@@ -210,6 +206,7 @@ class Hist:
 
         if plot:
             print 'yolo'
+            import matplotlib.pyplot as plt
             plt.figure()
             self.plot()
             plt.plot(X, fitFunction(X, *popt))
@@ -218,6 +215,7 @@ class Hist:
                     
 
     def plot(self,**kwargs):
+        import matplotlib.pyplot as plt
         if self.df.empty:
             return self
             
@@ -322,6 +320,9 @@ def singleton(cls):
 class SelStatusDescriptor:
     def __init__(self):
         data=executeQuery("bq --format json show " + bigQueryTable)
+        print "******"
+        print data
+        print "******"
         for d in data['schema']['fields']:
             if d['name'] == 'selStatus':
                 selStatusName=d['description']
