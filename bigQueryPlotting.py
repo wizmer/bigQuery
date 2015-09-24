@@ -4,7 +4,6 @@ import os
 import numpy as np
 import subprocess
 import json
-import bq
 import pickle as pkl
 import histQueryFactory
 import pandas as pd
@@ -243,24 +242,30 @@ def singleton(cls):
 
 # @singleton
 class SelStatusDescriptor:
-    def __init__(self):
-
-        theCommand="bq --format json show " + bigQueryTable
-        print theCommand
-        data=executeQuery(theCommand)
-        for d in data['schema']['fields']:
+    def __init__(self, table):
+        args = {
+            "projectId": "ams-test-kostya",
+            "datasetId": table.split('.')[0],
+              "tableId": table.split('.')[1]
+        }
+        connector = pd.io.gbq.GbqConnector(args['projectId'], reauth=False)
+        tbls = connector.service.tables()
+        tableData = tbls.get(**args).execute()
+        print "******"
+        print tableData
+        print "******"
+        for d in tableData['schema']['fields']:
             if d['name'] == 'selStatus':
                 self.selStatusName=d['description']
 
-        self.selStatusName=self.selStatusName.split(',')
+        self.selStatusName = self.selStatusName.split(',')
         self.bitIndex=dict()
         for i in range(len(self.selStatusName)):
             self.bitIndex[self.selStatusName[i]]=i
 
-def makeSelectionMask(cutList):
-    print 'cutlist : '
-    print cutList
-    selStatusDescriptor=SelStatusDescriptor()
+
+def makeSelectionMask(table, cutList):
+    selStatusDescriptor=SelStatusDescriptor(table)
     selMask=0 # has a 1 for every bit that has to be checked
     statusMask=0 # take the bit value for every bit that has to be checked
     for cut in cutList:
@@ -278,8 +283,9 @@ def makeSelectionMask(cutList):
 
     return ' ((selStatus^' + str(statusMask) + ')&' + str(selMask) + ')==0 '
 
-def getSelectionsFromMask(mask):
-    selStatusDescriptor=SelStatusDescriptor()
+
+def getSelectionsFromMask(table, mask):
+    selStatusDescriptor=SelStatusDescriptor(table)
     theMask="{0:b}".format(mask)
     theMask=theMask[::-1]
     result=list()
